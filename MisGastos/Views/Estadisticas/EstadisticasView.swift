@@ -235,6 +235,8 @@ struct EstadisticasView: View {
                 }
             }
         }
+        .navigationBarHidden(true)
+        .toolbarColorScheme(.light, for: .navigationBar)
     }
 
     @ViewBuilder

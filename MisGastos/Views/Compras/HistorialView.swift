@@ -114,6 +114,7 @@ struct HistorialView: View {
             }
         }
         .navigationBarHidden(true)
+        .toolbarColorScheme(.light, for: .navigationBar)
     }
 
     @ViewBuilder
@@ -135,7 +136,9 @@ struct HistorialView: View {
 
             SACard(padding: 0) {
                 ForEach(Array(compras.enumerated()), id: \.element.id) { idx, compra in
-                    NavigationLink(destination: DetalleCompraView(compra: compra)) {
+                    NavigationLink {
+                        DetalleCompraView(compra: compra)
+                    } label: {
                         historialRow(compra: compra, isLast: idx == compras.count - 1)
                     }
                     .buttonStyle(.plain)

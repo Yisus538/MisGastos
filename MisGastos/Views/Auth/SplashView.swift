@@ -53,6 +53,7 @@ struct SplashView: View {
                     .padding(.bottom, 64)
                 }
             }
+            .preferredColorScheme(.dark)
             .onAppear {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
                     logoScale = 1.0

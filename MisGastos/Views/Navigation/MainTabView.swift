@@ -12,17 +12,28 @@ struct MainTabView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Group {
-                switch selectedTab {
-                case 0: NavigationStack { HomeView() }
-                case 1: NavigationStack { HistorialView() }
-                case 2: EstadisticasView()
-                default: NavigationStack { PerfilView() }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // TabView sin swipe: usa .tabViewStyle(.automatic) implícito
+            // pero ocultamos la tab bar nativa con toolbarVisibility
+            TabView(selection: $selectedTab) {
+                NavigationStack { HomeView() }
+                    .tag(0)
+                    .toolbar(.hidden, for: .tabBar)
 
-            // Liquid-glass pill tab bar
+                NavigationStack { HistorialView() }
+                    .tag(1)
+                    .toolbar(.hidden, for: .tabBar)
+
+                NavigationStack { EstadisticasView() }
+                    .tag(2)
+                    .toolbar(.hidden, for: .tabBar)
+
+                NavigationStack { PerfilView() }
+                    .tag(3)
+                    .toolbar(.hidden, for: .tabBar)
+            }
+            .ignoresSafeArea(edges: .bottom)
+
+            // Custom liquid-glass pill tab bar
             HStack(spacing: 0) {
                 ForEach(Array(tabs.enumerated()), id: \.offset) { idx, tab in
                     tabItem(icon: tab.icon, label: tab.label, tag: idx)
@@ -31,10 +42,8 @@ struct MainTabView: View {
             .frame(height: 64)
             .background(
                 ZStack {
-                    RoundedRectangle(cornerRadius: 32)
-                        .fill(.ultraThinMaterial)
-                    RoundedRectangle(cornerRadius: 32)
-                        .stroke(Color.white.opacity(0.5), lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: 32).fill(.ultraThinMaterial)
+                    RoundedRectangle(cornerRadius: 32).stroke(Color.white.opacity(0.5), lineWidth: 0.5)
                 }
             )
             .shadow(color: .black.opacity(0.12), radius: 20, y: 8)

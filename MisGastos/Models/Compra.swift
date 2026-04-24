@@ -7,7 +7,7 @@ final class Compra {
     var fecha: Date
     var supermercado: String
     var total: Double
-    var metodoPago: String
+    var metodoPago: String = "Efectivo"
     var imagenTicket: Data?
     @Relationship(deleteRule: .cascade) var productos: [Producto]
 

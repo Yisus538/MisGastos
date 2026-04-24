@@ -27,6 +27,7 @@ struct DetalleCompraView: View {
             }
         }
         .navigationBarHidden(true)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showNuevoProducto) { NuevoProductoView(compra: compra) }
         .alert("Eliminar compra", isPresented: $showDeleteAlert) {
             Button("Cancelar", role: .cancel) {}

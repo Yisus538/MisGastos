@@ -201,6 +201,7 @@ struct PerfilView: View {
             }
         }
         .navigationBarHidden(true)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showEditar) { EditarPerfilView() }
     }

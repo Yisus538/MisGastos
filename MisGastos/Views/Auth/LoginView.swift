@@ -87,6 +87,8 @@ struct LoginView: View {
                     .padding(.vertical, 24)
                 }
             }
+            .navigationBarHidden(true)
+            .toolbarColorScheme(.light, for: .navigationBar)
             .sheet(isPresented: $showRegister) { RegisterView() }
             .sheet(isPresented: $showForgot) { ForgotPasswordView() }
         }

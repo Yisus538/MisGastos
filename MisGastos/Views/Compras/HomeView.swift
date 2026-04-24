@@ -73,6 +73,7 @@ struct HomeView: View {
             .padding(.bottom, 104)
         }
         .navigationBarHidden(true)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showNuevaCompra) { NuevaCompraView() }
     }
 
@@ -199,16 +200,20 @@ struct HomeView: View {
                         .foregroundStyle(Color.saLabel)
                         .tracking(-0.5)
                     Spacer()
-                    NavigationLink("Ver todas") {
+                    NavigationLink {
                         HistorialView()
+                    } label: {
+                        Text("Ver todas")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color.saGreen)
                     }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.saGreen)
                 }
 
                 SACard(padding: 0) {
                     ForEach(Array(compras.prefix(8).enumerated()), id: \.element.id) { idx, compra in
-                        NavigationLink(destination: DetalleCompraView(compra: compra)) {
+                        NavigationLink {
+                            DetalleCompraView(compra: compra)
+                        } label: {
                             recentRow(compra: compra, isLast: idx == min(7, compras.count - 1))
                         }
                         .buttonStyle(.plain)
