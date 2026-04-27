@@ -109,7 +109,7 @@ struct HistorialView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    .padding(.bottom, 140)
+                    .padding(.bottom, 24)
                 }
             }
         }

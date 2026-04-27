@@ -62,7 +62,7 @@ struct HomeView: View {
                     recentSection
                         .padding(.top, 24)
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 140)
+                        .padding(.bottom, 24)
                 }
             }
             .ignoresSafeArea(edges: .top)
@@ -77,7 +77,7 @@ struct HomeView: View {
                     .shadow(color: Color.saGreen.opacity(0.4), radius: 12, y: 6)
             }
             .padding(.trailing, 20)
-            .padding(.bottom, 104)
+            .padding(.bottom, 28)
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)

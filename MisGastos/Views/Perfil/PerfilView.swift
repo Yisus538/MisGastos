@@ -198,7 +198,7 @@ struct PerfilView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.top, 24)
-                        .padding(.bottom, 140)
+                        .padding(.bottom, 24)
                     }
                     .padding(.horizontal, 20)
                     .offset(y: -40)

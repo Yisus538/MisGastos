@@ -231,7 +231,7 @@ struct EstadisticasView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.bottom, 140)
+                    .padding(.bottom, 24)
                 }
             }
         }
