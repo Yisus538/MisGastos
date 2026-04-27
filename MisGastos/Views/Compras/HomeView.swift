@@ -46,6 +46,12 @@ struct HomeView: View {
         nombre.components(separatedBy: " ").first?.uppercased() ?? nombre.uppercased()
     }
 
+    private var statusBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.top }
+            .first ?? 44
+    }
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Color.saBg.ignoresSafeArea()
@@ -59,6 +65,7 @@ struct HomeView: View {
                         .padding(.bottom, 140)
                 }
             }
+            .ignoresSafeArea(edges: .top)
 
             // FAB
             Button(action: { showNuevaCompra = true }) {
@@ -72,7 +79,7 @@ struct HomeView: View {
             .padding(.trailing, 20)
             .padding(.bottom, 104)
         }
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showNuevaCompra) { NuevaCompraView() }
     }
@@ -90,7 +97,7 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: 0) {
                 // Status bar space
-                Color.clear.frame(height: 56)
+                Color.clear.frame(height: statusBarHeight)
 
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
@@ -260,6 +267,7 @@ struct HomeView: View {
                     .padding(.leading, 70)
             }
         }
+        .contentShape(Rectangle())
     }
 
     private var emptyState: some View {

@@ -225,6 +225,7 @@ struct NuevaCompraView: View {
                     Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 62)
                 }
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -259,6 +260,7 @@ struct StorePickerSheet: View {
                                 .fontWeight(.semibold)
                         }
                     }
+                    .contentShape(Rectangle())
                 }
             }
             .navigationTitle("Elegí una tienda")
@@ -299,6 +301,7 @@ struct PaymentPickerSheet: View {
                                 .fontWeight(.semibold)
                         }
                     }
+                    .contentShape(Rectangle())
                 }
             }
             .navigationTitle("Método de pago")

@@ -20,13 +20,19 @@ struct PerfilView: View {
         return nombre.prefix(2).uppercased().isEmpty ? "ML" : nombre.prefix(2).uppercased()
     }
 
+    private var statusBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.top }
+            .first ?? 44
+    }
+
     var body: some View {
         ZStack {
             Color.saBg.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    // Green gradient header
+                    // Green gradient header — starts at y=0 (behind status bar)
                     ZStack(alignment: .topTrailing) {
                         LinearGradient.saGreen
 
@@ -36,7 +42,7 @@ struct PerfilView: View {
                             .offset(x: 100, y: -100)
 
                         VStack(spacing: 0) {
-                            Color.clear.frame(height: 56)
+                            Color.clear.frame(height: statusBarHeight)
 
                             HStack {
                                 Text("Perfil")
@@ -199,8 +205,9 @@ struct PerfilView: View {
                     .padding(.bottom, -40)
                 }
             }
+            .ignoresSafeArea(edges: .top)
         }
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showEditar) { EditarPerfilView() }
@@ -271,6 +278,7 @@ struct PerfilView: View {
                     Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 62)
                 }
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

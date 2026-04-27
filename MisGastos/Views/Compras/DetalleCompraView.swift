@@ -12,6 +12,12 @@ struct DetalleCompraView: View {
 
     private var storeInfo: SAStoreInfo { saStoreInfo(for: compra.supermercado) }
 
+    private var statusBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.top }
+            .first ?? 44
+    }
+
     var body: some View {
         ZStack {
             Color.saBg.ignoresSafeArea()
@@ -25,8 +31,9 @@ struct DetalleCompraView: View {
                         .padding(.bottom, 140)
                 }
             }
+            .ignoresSafeArea(edges: .top)
         }
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showNuevoProducto) { NuevoProductoView(compra: compra) }
         .alert("Eliminar compra", isPresented: $showDeleteAlert) {
@@ -59,7 +66,7 @@ struct DetalleCompraView: View {
                 .offset(x: 120, y: -80)
 
             VStack(alignment: .leading, spacing: 0) {
-                Color.clear.frame(height: 56)
+                Color.clear.frame(height: statusBarHeight)
 
                 HStack {
                     Button(action: { dismiss() }) {
@@ -204,6 +211,8 @@ struct DetalleCompraView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .overlay(alignment: .top) {
                     if !compra.productos.isEmpty {

@@ -66,6 +66,7 @@ struct MainTabView: View {
                     .foregroundStyle(active ? Color.saGreen : Color.saLabel3)
             }
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

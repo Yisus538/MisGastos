@@ -113,7 +113,7 @@ struct HistorialView: View {
                 }
             }
         }
-        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)
     }
 
@@ -176,5 +176,6 @@ struct HistorialView: View {
                 Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 68)
             }
         }
+        .contentShape(Rectangle())
     }
 }
