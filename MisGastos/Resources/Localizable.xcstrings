@@ -42,10 +42,23 @@
         }
       }
     },
+    "%lld producto%@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld producto%2$@"
+          }
+        }
+      }
+    },
     "%lld productos" : {
 
     },
     "%lld%%" : {
+
+    },
+    "%lldx" : {
 
     },
     "$" : {
@@ -58,6 +71,9 @@
 
     },
     "1.0.0" : {
+
+    },
+    "Abrir Configuración" : {
 
     },
     "Acepto los " : {
@@ -99,6 +115,12 @@
 
     },
     "Adjuntar ticket" : {
+
+    },
+    "Agregá al menos un producto para guardar" : {
+
+    },
+    "Agregar" : {
 
     },
     "Agregar producto" : {
@@ -158,7 +180,22 @@
         }
       }
     },
+    "Apuntá la cámara al código de barras" : {
+
+    },
+    "Aún no registraste ninguna compra.\nUsá el **+** en Inicio para comenzar." : {
+
+    },
     "Bienvenido" : {
+
+    },
+    "Buscar producto..." : {
+
+    },
+    "Cámara" : {
+
+    },
+    "Cámara no disponible" : {
 
     },
     "Cambiar foto" : {
@@ -167,11 +204,30 @@
     "Cancelar" : {
 
     },
+    "Cantidad" : {
+
+    },
     "Cerrar sesión" : {
+
+    },
+    "Comparar" : {
+
+    },
+    "Comparativa" : {
 
     },
     "Compartir" : {
 
+    },
+    "Comprá en **%@** y ahorrás %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Comprá en **%1$@** y ahorrás %2$@"
+          }
+        }
+      }
     },
     "compra.fecha" : {
       "extractionState" : "stale",
@@ -335,10 +391,22 @@
         }
       }
     },
-    "Detectaremos productos automáticamente" : {
+    "DISTRIBUCIÓN POR TIENDA" : {
+
+    },
+    "Editar" : {
+
+    },
+    "Editar compra" : {
 
     },
     "Editar perfil" : {
+
+    },
+    "Editar producto" : {
+
+    },
+    "Elegí el formato para exportar tus compras" : {
 
     },
     "Elegí una tienda" : {
@@ -353,7 +421,14 @@
     "Empezá a ahorrar en segundos" : {
 
     },
+    "Encontrá dónde comprás más barato" : {
+
+    },
+    "Enviamos las instrucciones a:" : {
+
+    },
     "error.campos_vacios" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -369,13 +444,25 @@
         }
       }
     },
+    "Escaneando ticket…" : {
+
+    },
+    "Esta función requiere un dispositivo físico." : {
+
+    },
     "Estadísticas" : {
+
+    },
+    "Exportar historial" : {
 
     },
     "Fecha" : {
 
     },
     "Foto adjunta" : {
+
+    },
+    "Galería" : {
 
     },
     "Gastado este mes" : {
@@ -387,10 +474,16 @@
     "Gastaste menos" : {
 
     },
+    "Gasto" : {
+
+    },
     "Gasto mensual" : {
 
     },
     "Guardar" : {
+
+    },
+    "Habilitá el permiso en Configuración → Súper Ahorro → Cámara" : {
 
     },
     "Hello, world!" : {
@@ -538,7 +631,7 @@
         }
       }
     },
-    "Ingresá tu correo y te enviaremos instrucciones para recuperar tu cuenta." : {
+    "Ingresá tu correo y te enviamos instrucciones para recuperar tu cuenta." : {
 
     },
     "Iniciá sesión" : {
@@ -638,6 +731,15 @@
         }
       }
     },
+    "Los productos se detectarán automáticamente con OCR" : {
+
+    },
+    "MÁS BARATO" : {
+
+    },
+    "MÁS CARO" : {
+
+    },
     "Mes" : {
 
     },
@@ -645,6 +747,9 @@
 
     },
     "Mi compra" : {
+
+    },
+    "No recibí el correo" : {
 
     },
     "notif.recordatorio.body" : {
@@ -665,6 +770,9 @@
       }
     },
     "Nueva compra" : {
+
+    },
+    "Nuevo producto" : {
 
     },
     "o continuá con" : {
@@ -765,6 +873,9 @@
 
     },
     "Política de Privacidad" : {
+
+    },
+    "Producto" : {
 
     },
     "producto.agregar" : {
@@ -880,6 +991,12 @@
         }
       }
     },
+    "PRODUCTOS" : {
+
+    },
+    "PRODUCTOS MÁS COMPRADOS" : {
+
+    },
     "Recordé mi contraseña." : {
 
     },
@@ -934,8 +1051,24 @@
         }
       }
     },
+    "Registrá el mismo producto en 2 o más supermercados para ver la comparativa de precios." : {
+
+    },
     "Registrate" : {
 
+    },
+    "Revisá tu bandeja" : {
+
+    },
+    "Se detectaron **%lld** producto%@ del ticket" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Se detectaron **%1$lld** producto%2$@ del ticket"
+          }
+        }
+      }
     },
     "settings.acerca" : {
       "extractionState" : "stale",
@@ -1073,13 +1206,19 @@
         }
       }
     },
+    "Sin acceso a la cámara" : {
+
+    },
+    "Sin comparativas" : {
+
+    },
+    "Sin compras" : {
+
+    },
     "Sin compras aún" : {
 
     },
     "Sin datos para el período" : {
-
-    },
-    "Sin resultados" : {
 
     },
     "stats.compras" : {
@@ -1318,7 +1457,10 @@
     "ticket.jpg" : {
 
     },
-    "Tocá el + para registrar\ntu primera compra" : {
+    "Tienda" : {
+
+    },
+    "Tocá el **+** para registrar\ntu primera compra" : {
 
     },
     "Total" : {

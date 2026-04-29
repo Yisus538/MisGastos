@@ -3,6 +3,7 @@ import SwiftUI
 struct RegisterView: View {
     @State private var viewModel = AuthViewModel()
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @State private var termsAccepted = true
 
     private var strengthLevel: Int {
@@ -16,7 +17,7 @@ struct RegisterView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.saBg.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -74,7 +75,7 @@ struct RegisterView: View {
                     HStack(alignment: .top, spacing: 10) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 6)
-                                .fill(termsAccepted ? Color.saGreen : Color.white)
+                                .fill(termsAccepted ? Color.saGreen : Color.saCard)
                                 .frame(width: 22, height: 22)
                             if !termsAccepted {
                                 RoundedRectangle(cornerRadius: 6)
@@ -105,7 +106,7 @@ struct RegisterView: View {
                     }
 
                     SAButton(title: "Crear cuenta", isLoading: viewModel.isLoading) {
-                        Task { await viewModel.register() }
+                        Task { await viewModel.register(context: modelContext) }
                     }
                     .disabled(!termsAccepted)
                     .padding(.top, 16)
@@ -134,71 +135,6 @@ struct RegisterView: View {
         case 2: return "Contraseña regular"
         case 3: return "Contraseña buena"
         default: return "Contraseña segura"
-        }
-    }
-}
-
-struct ForgotPasswordView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var email = ""
-
-    var body: some View {
-        ZStack {
-            Color.white.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: 0) {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.saLabel)
-                        .frame(width: 36, height: 36)
-                        .background(Color.saBg)
-                        .clipShape(Circle())
-                }
-                .padding(.top, 56)
-                .padding(.bottom, 24)
-
-                VStack(alignment: .center, spacing: 20) {
-                    ZStack {
-                        Circle().fill(Color.saGreenBg).frame(width: 80, height: 80)
-                        Image(systemName: "key.fill")
-                            .font(.system(size: 36))
-                            .foregroundStyle(Color.saGreen)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    Text("¿Olvidaste tu contraseña?")
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(Color.saLabel)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-
-                    Text("Ingresá tu correo y te enviaremos instrucciones para recuperar tu cuenta.")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.saLabel3)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 300)
-                        .frame(maxWidth: .infinity)
-                }
-
-                SAField(placeholder: "tucorreo@ejemplo.com", text: $email, icon: "envelope")
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .padding(.top, 28)
-
-                SAButton(title: "Enviar instrucciones") { dismiss() }
-                    .padding(.top, 16)
-
-                HStack(spacing: 4) {
-                    Text("Recordé mi contraseña.").font(.system(size: 14)).foregroundStyle(Color.saLabel3)
-                    Button("Iniciar sesión") { dismiss() }
-                        .font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.saGreen)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.top, 20)
-
-                Spacer()
-            }
-            .padding(.horizontal, 24)
         }
     }
 }

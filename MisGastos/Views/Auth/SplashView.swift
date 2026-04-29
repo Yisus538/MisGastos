@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct SplashView: View {
-    @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
+    @AppStorage("isLoggedIn")  private var isLoggedIn:  Bool = false
+    @AppStorage("isDarkMode")  private var isDarkMode:  Bool = false
     @State private var showMain = false
     @State private var logoScale: CGFloat = 0.6
     @State private var logoOpacity: Double = 0
@@ -11,7 +12,10 @@ struct SplashView: View {
 
     var body: some View {
         if showMain {
-            if isLoggedIn { MainTabView() } else { LoginView() }
+            Group {
+                if isLoggedIn { MainTabView() } else { LoginView() }
+            }
+            .preferredColorScheme(isDarkMode ? .dark : nil)
         } else {
             ZStack {
                 LinearGradient.saGreen.ignoresSafeArea()

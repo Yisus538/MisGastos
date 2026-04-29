@@ -17,8 +17,12 @@ struct MainTabView: View {
                 .tag(2)
                 .tabItem { Label("Estadísticas", systemImage: "chart.bar.fill") }
 
-            NavigationStack { PerfilView() }
+            NavigationStack { ComparativaView() }
                 .tag(3)
+                .tabItem { Label("Comparar", systemImage: "scalemass.fill") }
+
+            NavigationStack { PerfilView() }
+                .tag(4)
                 .tabItem { Label("Perfil", systemImage: "person.fill") }
         }
         .tint(Color.saGreen)

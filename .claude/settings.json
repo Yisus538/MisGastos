@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '\nPROJ=\"/Users/yisus/Documents/Facultad/Tecnologia Moviles/MisGastos\"\nCLAUDE_MD=\"$PROJ/CLAUDE.md\"\n\nif [ ! -f \"$CLAUDE_MD\" ]; then\n  echo \"ERROR: CLAUDE.md no existe. Crealo antes de continuar.\"\n  exit 1\nfi\n\nRECENT_SWIFT=$(find \"$PROJ/MisGastos\" -name \"*.swift\" -newer \"$CLAUDE_MD\" 2>/dev/null)\n\nif [ -n \"$RECENT_SWIFT\" ]; then\n  echo \"\"\n  echo \"⚠️  CICLO INCOMPLETO — CLAUDE.md no fue actualizado.\"\n  echo \"\"\n  echo \"Los siguientes archivos .swift son más recientes que CLAUDE.md:\"\n  echo \"$RECENT_SWIFT\" | sed \"s|$PROJ/||g\" | head -10\n  echo \"\"\n  echo \"→ Ejecutá /ciclo-cierre antes de terminar el ciclo.\"\n  echo \"  Esto actualiza CLAUDE.md y el Notion del TP.\"\n  echo \"\"\n  exit 1\nfi\n\nexit 0\n'"
+          }
+        ]
+      }
+    ]
+  }
+}

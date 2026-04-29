@@ -271,22 +271,11 @@ struct HomeView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 20) {
-            Spacer(minLength: 60)
-            ZStack {
-                Circle().fill(Color.saGreenBg).frame(width: 120, height: 120)
-                Image(systemName: "cart.fill")
-                    .font(.system(size: 52))
-                    .foregroundStyle(Color.saGreen)
-            }
-            Text("Sin compras aún")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(Color.saLabel)
-            Text("Tocá el + para registrar\ntu primera compra")
-                .font(.system(size: 15))
-                .foregroundStyle(Color.saLabel3)
-                .multilineTextAlignment(.center)
-            Spacer()
+        ContentUnavailableView {
+            Label("Sin compras aún", systemImage: "cart.fill")
+        } description: {
+            Text("Tocá el **+** para registrar\ntu primera compra")
         }
+        .padding(.top, 40)
     }
 }

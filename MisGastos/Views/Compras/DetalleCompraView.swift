@@ -8,7 +8,12 @@ struct DetalleCompraView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showNuevoProducto = false
     @State private var showDeleteAlert = false
+    @State private var showEditar = false
+    @State private var productoSeleccionado: Producto?
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var showTicketOptions = false
+    @State private var showCamera = false
+    @State private var showGallery = false
 
     private var storeInfo: SAStoreInfo { saStoreInfo(for: compra.supermercado) }
 
@@ -36,6 +41,8 @@ struct DetalleCompraView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showNuevoProducto) { NuevoProductoView(compra: compra) }
+        .sheet(isPresented: $showEditar) { EditarCompraView(compra: compra) }
+        .sheet(item: $productoSeleccionado) { EditarProductoView(producto: $0, compra: compra) }
         .alert("Eliminar compra", isPresented: $showDeleteAlert) {
             Button("Cancelar", role: .cancel) {}
             Button("Eliminar", role: .destructive) {
@@ -44,6 +51,19 @@ struct DetalleCompraView: View {
             }
         } message: {
             Text("¿Estás seguro? Esta acción no se puede deshacer.")
+        }
+        .confirmationDialog("Adjuntar ticket", isPresented: $showTicketOptions) {
+            Button("Cámara") { showCamera = true }
+            Button("Galería") { showGallery = true }
+            Button("Cancelar", role: .cancel) {}
+        }
+        .photosPicker(isPresented: $showGallery, selection: $selectedPhoto, matching: .images)
+        .onChange(of: selectedPhoto) { _, item in
+            Task { compra.imagenTicket = try? await item?.loadTransferable(type: Data.self) }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPickerView(imageData: $compra.imagenTicket)
+                .ignoresSafeArea()
         }
     }
 
@@ -80,19 +100,31 @@ struct DetalleCompraView: View {
                             )
                     }
                     Spacer()
-                    ShareLink(
-                        item: resumen(),
-                        subject: Text("Mi compra"),
-                        message: Text("Desde Súper Ahorro")
-                    ) {
-                        Circle()
-                            .fill(Color.white.opacity(0.22))
-                            .frame(width: 36, height: 36)
-                            .overlay(
-                                Image(systemName: "square.and.arrow.up")
-                                    .font(.system(size: 15))
-                                    .foregroundStyle(.white)
-                            )
+                    HStack(spacing: 8) {
+                        Button(action: { showEditar = true }) {
+                            Circle()
+                                .fill(Color.white.opacity(0.22))
+                                .frame(width: 36, height: 36)
+                                .overlay(
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 15))
+                                        .foregroundStyle(.white)
+                                )
+                        }
+                        ShareLink(
+                            item: resumen(),
+                            subject: Text("Mi compra"),
+                            message: Text("Desde Súper Ahorro")
+                        ) {
+                            Circle()
+                                .fill(Color.white.opacity(0.22))
+                                .frame(width: 36, height: 36)
+                                .overlay(
+                                    Image(systemName: "square.and.arrow.up")
+                                        .font(.system(size: 15))
+                                        .foregroundStyle(.white)
+                                )
+                        }
                     }
                 }
 
@@ -153,7 +185,7 @@ struct DetalleCompraView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                             .padding(16)
                     }
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    Button { showTicketOptions = true } label: {
                         HStack(spacing: 8) {
                             Image(systemName: "photo.on.rectangle.angled")
                                 .foregroundStyle(Color.saGreen)
@@ -164,9 +196,7 @@ struct DetalleCompraView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
                     }
-                    .onChange(of: selectedPhoto) { _, item in
-                        Task { compra.imagenTicket = try? await item?.loadTransferable(type: Data.self) }
-                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.bottom, 20)
             }
@@ -176,28 +206,44 @@ struct DetalleCompraView: View {
 
             SACard(padding: 0) {
                 ForEach(Array(compra.productos.enumerated()), id: \.element.id) { idx, producto in
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(producto.nombre)
-                                .font(.system(size: 15, weight: .medium))
+                    Button(action: { productoSeleccionado = producto }) {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(producto.nombre)
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(Color.saLabel)
+                                    .tracking(-0.2)
+                                if !producto.codigo.isEmpty {
+                                    Text(producto.codigo)
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color.saLabel3)
+                                }
+                            }
+                            Spacer()
+                            Text(producto.precio.formatted(.currency(code: "ARS")))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(Color.saLabel)
-                                .tracking(-0.2)
-                            if !producto.codigo.isEmpty {
-                                Text(producto.codigo)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(Color.saLabel3)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.saLabel4)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .overlay(alignment: .bottom) {
+                            if idx < compra.productos.count - 1 {
+                                Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 16)
                             }
                         }
-                        Spacer()
-                        Text(producto.precio.formatted(.currency(code: "ARS")))
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.saLabel)
+                        .contentShape(Rectangle())
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .overlay(alignment: .bottom) {
-                        if idx < compra.productos.count - 1 {
-                            Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 16)
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button { productoSeleccionado = producto } label: {
+                            Label("Editar", systemImage: "pencil")
+                        }
+                        Divider()
+                        Button(role: .destructive) { eliminarProducto(producto) } label: {
+                            Label("Eliminar", systemImage: "trash")
                         }
                     }
                 }
@@ -266,6 +312,12 @@ struct DetalleCompraView: View {
             .padding(.horizontal, 4)
             .padding(.bottom, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func eliminarProducto(_ producto: Producto) {
+        compra.total = max(0, compra.total - producto.precio)
+        compra.productos.removeAll { $0.id == producto.id }
+        modelContext.delete(producto)
     }
 
     private func resumen() -> String {

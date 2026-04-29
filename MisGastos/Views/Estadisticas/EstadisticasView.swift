@@ -66,6 +66,15 @@ struct EstadisticasView: View {
         comprasEsteMes.map { $0.total }.max() ?? 0
     }
 
+    private var productosMasComprados: [(nombre: String, cantidad: Int)] {
+        let todos = comprasRango.flatMap { $0.productos }
+        return Dictionary(grouping: todos, by: { $0.nombre })
+            .map { (nombre: $0.key, cantidad: $0.value.count) }
+            .sorted { $0.cantidad > $1.cantidad }
+            .prefix(5)
+            .map { $0 }
+    }
+
     var body: some View {
         ZStack {
             Color.saBg.ignoresSafeArea()
@@ -227,6 +236,64 @@ struct EstadisticasView: View {
                                 insightCard(icon: "storefront", label: "Tiendas", value: "\(Set(comprasEsteMes.map { $0.supermercado }).count)", bg: Color(hex: "#F97316"))
                                 insightCard(icon: "tag.fill", label: "Ticket promedio", value: ticketPromedio.formatted(.currency(code: "ARS")), bg: Color.saGreen, small: true)
                                 insightCard(icon: "bookmark.fill", label: "Mayor compra", value: mayorCompra.formatted(.currency(code: "ARS")), bg: Color(hex: "#A855F7"), small: true)
+                            }
+                        }
+                        // Distribución por tienda — SectorMark (donut)
+                        if !gastosPorSuper.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("DISTRIBUCIÓN POR TIENDA")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Color.saLabel3)
+                                    .tracking(0.2)
+                                    .padding(.horizontal, 4)
+
+                                SACard {
+                                    Chart(gastosPorSuper.prefix(6), id: \.nombre) { item in
+                                        SectorMark(
+                                            angle: .value("Gasto", item.total),
+                                            innerRadius: .ratio(0.55),
+                                            angularInset: 2
+                                        )
+                                        .foregroundStyle(by: .value("Tienda", item.nombre))
+                                        .cornerRadius(4)
+                                    }
+                                    .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
+                                    .frame(height: 220)
+                                }
+                            }
+                        }
+
+                        // Productos más comprados — BarMark horizontal
+                        if !productosMasComprados.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text("PRODUCTOS MÁS COMPRADOS")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Color.saLabel3)
+                                    .tracking(0.2)
+                                    .padding(.horizontal, 4)
+
+                                SACard {
+                                    Chart(productosMasComprados, id: \.nombre) { item in
+                                        BarMark(
+                                            x: .value("Cantidad", item.cantidad),
+                                            y: .value("Producto", item.nombre)
+                                        )
+                                        .foregroundStyle(LinearGradient.saGreen)
+                                        .cornerRadius(6)
+                                        .annotation(position: .trailing) {
+                                            Text("\(item.cantidad)x")
+                                                .font(.system(size: 12, weight: .semibold))
+                                                .foregroundStyle(Color.saLabel3)
+                                        }
+                                    }
+                                    .frame(height: CGFloat(productosMasComprados.count) * 46)
+                                    .chartXAxis {
+                                        AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                                            AxisGridLine().foregroundStyle(Color.saSep)
+                                            AxisValueLabel()
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

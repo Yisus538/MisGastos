@@ -10,7 +10,7 @@ struct EditarPerfilView: View {
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color.saBg.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
                 Button(action: { dismiss() }) {

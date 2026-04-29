@@ -5,6 +5,9 @@ struct HistorialView: View {
     @Query(sort: \Compra.fecha, order: .reverse) private var todas: [Compra]
     @State private var busqueda = ""
     @State private var filtroSuper = "Todas"
+    @State private var showExportSheet = false
+    @State private var shareItems: [Any] = []
+    @State private var showShareSheet = false
 
     private var supermercados: [String] {
         ["Todas"] + Array(Set(todas.map { $0.supermercado })).sorted()
@@ -20,7 +23,6 @@ struct HistorialView: View {
         }
     }
 
-    // Group by YYYY-MM (ISO key for reliable sorting)
     private let groupCal = Calendar.current
 
     private var grupos: [(key: String, compras: [Compra])] {
@@ -49,13 +51,25 @@ struct HistorialView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Title
-                    Text("Historial")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundStyle(Color.saLabel)
-                        .tracking(-1)
-                        .padding(.top, 60)
-                        .padding(.horizontal, 20)
+                    // Title + export button
+                    HStack(alignment: .bottom) {
+                        Text("Historial")
+                            .font(.system(size: 32, weight: .bold))
+                            .foregroundStyle(Color.saLabel)
+                            .tracking(-1)
+                        Spacer()
+                        if !todas.isEmpty {
+                            Button { showExportSheet = true } label: {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(Color.saGreen)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.saCard, in: Circle())
+                            }
+                        }
+                    }
+                    .padding(.top, 60)
+                    .padding(.horizontal, 20)
 
                     // Search field
                     SAField(placeholder: "Buscar tienda, método...", text: $busqueda, icon: "magnifyingglass")
@@ -80,10 +94,7 @@ struct HistorialView: View {
                                                 : AnyShapeStyle(Color.saCard),
                                             in: Capsule()
                                         )
-                                        .shadow(
-                                            color: active ? .clear : .black.opacity(0.04),
-                                            radius: 2, y: 1
-                                        )
+                                        .shadow(color: active ? .clear : .black.opacity(0.04), radius: 2, y: 1)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -95,12 +106,16 @@ struct HistorialView: View {
 
                     // Groups
                     VStack(spacing: 20) {
-                        if grupos.isEmpty {
-                            Text("Sin resultados")
-                                .font(.system(size: 15))
-                                .foregroundStyle(Color.saLabel3)
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 40)
+                        if todas.isEmpty {
+                            ContentUnavailableView {
+                                Label("Sin compras", systemImage: "cart")
+                            } description: {
+                                Text("Aún no registraste ninguna compra.\nUsá el **+** en Inicio para comenzar.")
+                            }
+                            .padding(.top, 20)
+                        } else if grupos.isEmpty {
+                            ContentUnavailableView.search(text: busqueda)
+                                .padding(.top, 20)
                         } else {
                             ForEach(grupos, id: \.key) { grupo in
                                 mesGroup(nombre: nombreMes(grupo.key), compras: grupo.compras)
@@ -115,7 +130,21 @@ struct HistorialView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)
+        .sheet(isPresented: $showExportSheet) {
+            ExportSheet(compras: todas) { url in
+                shareItems = [url]
+                // Esperamos a que el sheet se cierre antes de abrir el share sheet
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                    showShareSheet = true
+                }
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            ActivitySheet(items: shareItems)
+        }
     }
+
+    // MARK: - Subviews
 
     @ViewBuilder
     private func mesGroup(nombre: String, compras: [Compra]) -> some View {
@@ -177,5 +206,159 @@ struct HistorialView: View {
             }
         }
         .contentShape(Rectangle())
+    }
+}
+
+// MARK: - Export Sheet
+
+struct ExportSheet: View {
+    let compras: [Compra]
+    let onExport: (URL) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    private var totalProductos: Int { compras.reduce(0) { $0 + $1.productos.count } }
+    private var totalGastado: Double { compras.reduce(0) { $0 + $1.total } }
+
+    var body: some View {
+        ZStack {
+            Color.saBg.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 0) {
+                // Drag handle
+                Capsule()
+                    .fill(Color.saSep)
+                    .frame(width: 36, height: 4)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
+                    .padding(.bottom, 20)
+
+                // Header
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Exportar historial")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Color.saLabel)
+                        .tracking(-0.5)
+                    Text("Elegí el formato para exportar tus compras")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.saLabel3)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+
+                // Stats summary card
+                SACard(padding: 14) {
+                    HStack(spacing: 0) {
+                        statCell(
+                            icon: "cart.fill",
+                            color: Color.saGreen,
+                            value: "\(compras.count)",
+                            label: "Compras"
+                        )
+                        Rectangle().fill(Color.saSep).frame(width: 0.5, height: 36)
+                        statCell(
+                            icon: "bag.fill",
+                            color: Color(hex: "#F97316"),
+                            value: "\(totalProductos)",
+                            label: "Productos"
+                        )
+                        Rectangle().fill(Color.saSep).frame(width: 0.5, height: 36)
+                        statCell(
+                            icon: "dollarsign.circle.fill",
+                            color: Color(hex: "#8B5CF6"),
+                            value: totalGastado.formatted(.currency(code: "ARS")),
+                            label: "Total"
+                        )
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+
+                // Export options
+                VStack(spacing: 10) {
+                    exportRow(
+                        icon: "tablecells.fill",
+                        iconColor: Color.saGreen,
+                        title: "Exportar como CSV",
+                        subtitle: "Compatible con Excel y Google Sheets"
+                    ) {
+                        if let url = ExportService.shared.generarCSV(compras: compras) {
+                            dismiss()
+                            onExport(url)
+                        }
+                    }
+
+                    exportRow(
+                        icon: "doc.richtext.fill",
+                        iconColor: Color(hex: "#F97316"),
+                        title: "Exportar como PDF",
+                        subtitle: "Documento formateado listo para imprimir"
+                    ) {
+                        if let url = ExportService.shared.generarPDF(compras: compras) {
+                            dismiss()
+                            onExport(url)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+
+                Spacer()
+            }
+        }
+        .presentationDetents([.height(370)])
+        .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(28)
+    }
+
+    @ViewBuilder
+    private func statCell(icon: String, color: Color, value: String, label: String) -> some View {
+        VStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 17))
+                .foregroundStyle(color)
+            Text(value)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Color.saLabel)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.saLabel3)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func exportRow(icon: String, iconColor: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            SACard(padding: 0) {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(iconColor.opacity(0.12))
+                            .frame(width: 48, height: 48)
+                        Image(systemName: icon)
+                            .font(.system(size: 22))
+                            .foregroundStyle(iconColor)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.saLabel)
+                        Text(subtitle)
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.saLabel3)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.saLabel4)
+                }
+                .padding(16)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }

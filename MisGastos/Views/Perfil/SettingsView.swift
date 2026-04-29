@@ -2,9 +2,12 @@ import SwiftUI
 import UserNotifications
 
 struct SettingsView: View {
-    @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false
-    @AppStorage("biometricEnabled") private var biometricEnabled: Bool = false
+    @AppStorage("isLoggedIn")  private var isLoggedIn:  Bool = false
+    @AppStorage("isDarkMode")  private var isDarkMode:  Bool = false
     @State private var notificaciones = false
+    @AppStorage("presupuestoActivo") private var presupuestoActivo: Bool = false
+    @AppStorage("presupuestoMensual") private var presupuesto: Double = 0
+    @State private var presupuestoStr = ""
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -58,7 +61,7 @@ struct SettingsView: View {
                         // Apariencia
                         sectionLabel("Apariencia").padding(.top, 22)
                         SACard(padding: 0) {
-                            toggleRow(icon: "moon.fill", iconBg: Color(hex: "#6366F1"), title: "Modo oscuro", binding: $biometricEnabled, isLast: false)
+                            toggleRow(icon: "moon.fill", iconBg: Color(hex: "#6366F1"), title: "Modo oscuro", binding: $isDarkMode, isLast: false)
                             plainRow(icon: "list.bullet", iconBg: Color(hex: "#8B5CF6"), title: "Densidad", value: "Cómoda", isLast: true)
                         }
 
@@ -101,7 +104,7 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.top, 24)
-                        .padding(.bottom, 140)
+                        .padding(.bottom, 24)
                     }
                     .padding(.horizontal, 20)
                 }

@@ -7,78 +7,35 @@ struct NuevaCompraView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var supermercado = saSupermercados[0]
-    @State private var totalStr = ""
     @State private var metodoPago = saMetodosPago[0]
     @State private var fecha = Date()
+    @State private var productos: [ProductoDraft] = []
     @State private var showStorePicker = false
     @State private var showPaymentPicker = false
+    @State private var showAgregarProducto = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var ticketData: Data?
+    @State private var showTicketOptions = false
+    @State private var showCamera = false
+    @State private var showGallery = false
+    @State private var isScanning = false
+    @State private var ocrDetected: Int?
 
-    private var canSave: Bool {
-        (Double(totalStr.replacingOccurrences(of: ",", with: ".")) ?? 0) > 0
-    }
+    private var total: Double { productos.reduce(0) { $0 + $1.precio } }
+    private var canSave: Bool { !productos.isEmpty && !isScanning }
 
     var body: some View {
         ZStack {
             Color.saBg.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Nav header
-                HStack {
-                    Button("Cancelar") { dismiss() }
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.saLabel2)
-
-                    Spacer()
-                    Text("Nueva compra")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color.saLabel)
-                        .tracking(-0.4)
-                    Spacer()
-
-                    Button("Guardar") { guardar() }
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(canSave ? Color.saGreen : Color.saLabel4)
-                        .disabled(!canSave)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 56)
-                .padding(.bottom, 16)
+                navHeader
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 0) {
-                        // Amount hero
-                        VStack(spacing: 4) {
-                            Text("TOTAL")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(Color.saLabel3)
-                                .tracking(0.2)
-                            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                                Text("$")
-                                    .font(.system(size: 28, weight: .semibold))
-                                    .foregroundStyle(Color.saLabel3)
-                                TextField("0", text: $totalStr)
-                                    .font(.system(size: 56, weight: .bold))
-                                    .foregroundStyle(Color.saLabel)
-                                    .tracking(-2)
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.center)
-                                    .fixedSize()
-                                    .onChange(of: totalStr) { _, v in
-                                        totalStr = v.filter { $0.isNumber || $0 == "." || $0 == "," }
-                                    }
-                            }
-                            Text("Pesos argentinos")
-                                .font(.system(size: 13))
-                                .foregroundStyle(Color.saLabel3)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 28)
+                        totalHero
 
-                        // Form rows card
                         SACard(padding: 0) {
-                            // Tienda
                             rowButton(
                                 icon: "storefront",
                                 iconBg: saStoreInfo(for: supermercado).color,
@@ -87,7 +44,6 @@ struct NuevaCompraView: View {
                                 isLast: false,
                                 action: { showStorePicker = true }
                             )
-                            // Fecha
                             HStack(spacing: 14) {
                                 ZStack {
                                     RoundedRectangle(cornerRadius: 8).fill(Color(hex: "#FF9500"))
@@ -96,7 +52,6 @@ struct NuevaCompraView: View {
                                         .foregroundStyle(.white)
                                 }
                                 .frame(width: 32, height: 32)
-
                                 Text("Fecha")
                                     .font(.system(size: 16))
                                     .foregroundStyle(Color.saLabel)
@@ -110,7 +65,6 @@ struct NuevaCompraView: View {
                             .overlay(alignment: .bottom) {
                                 Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 62)
                             }
-                            // Método de pago
                             rowButton(
                                 icon: "creditcard",
                                 iconBg: Color(hex: "#8B5CF6"),
@@ -121,78 +75,285 @@ struct NuevaCompraView: View {
                             )
                         }
 
-                        // Ticket section
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("TICKET")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(Color.saLabel3)
-                                .tracking(0.2)
-                                .padding(.horizontal, 4)
+                        productosSection
+                            .padding(.top, 24)
 
-                            SACard(padding: 0) {
-                                if let data = ticketData, let img = UIImage(data: data) {
-                                    HStack(spacing: 12) {
-                                        Image(uiImage: img)
-                                            .resizable().scaledToFill()
-                                            .frame(width: 60, height: 76)
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text("ticket.jpg")
-                                                .font(.system(size: 15, weight: .semibold))
-                                                .foregroundStyle(Color.saLabel)
-                                            Text("Foto adjunta")
-                                                .font(.system(size: 13))
-                                                .foregroundStyle(Color.saLabel3)
-                                        }
-                                        Spacer()
-                                        Button { ticketData = nil } label: {
-                                            Image(systemName: "trash")
-                                                .foregroundStyle(Color.saDanger)
-                                        }
-                                    }
-                                    .padding(16)
-                                } else {
-                                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                                        VStack(spacing: 10) {
-                                            Circle()
-                                                .fill(Color.saGreenBg)
-                                                .frame(width: 56, height: 56)
-                                                .overlay(
-                                                    Image(systemName: "camera.fill")
-                                                        .font(.system(size: 24))
-                                                        .foregroundStyle(Color.saGreen)
-                                                )
-                                            Text("Adjuntar foto del ticket")
-                                                .font(.system(size: 15, weight: .semibold))
-                                                .foregroundStyle(Color.saLabel)
-                                            Text("Detectaremos productos automáticamente")
-                                                .font(.system(size: 13))
-                                                .foregroundStyle(Color.saLabel3)
-                                                .multilineTextAlignment(.center)
-                                        }
-                                        .frame(maxWidth: .infinity)
-                                        .padding(24)
-                                    }
-                                    .onChange(of: selectedPhoto) { _, item in
-                                        Task { ticketData = try? await item?.loadTransferable(type: Data.self) }
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.top, 24)
+                        ticketSection
+                            .padding(.top, 24)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 100)
                 }
             }
         }
-        .sheet(isPresented: $showStorePicker) {
-            StorePickerSheet(selected: $supermercado)
+        .sheet(isPresented: $showStorePicker) { StorePickerSheet(selected: $supermercado) }
+        .sheet(isPresented: $showPaymentPicker) { PaymentPickerSheet(selected: $metodoPago) }
+        .sheet(isPresented: $showAgregarProducto) { AgregarProductoSheet(productos: $productos) }
+        .confirmationDialog("Adjuntar ticket", isPresented: $showTicketOptions) {
+            Button("Cámara") { showCamera = true }
+            Button("Galería") { showGallery = true }
+            Button("Cancelar", role: .cancel) {}
         }
-        .sheet(isPresented: $showPaymentPicker) {
-            PaymentPickerSheet(selected: $metodoPago)
+        .photosPicker(isPresented: $showGallery, selection: $selectedPhoto, matching: .images)
+        .onChange(of: selectedPhoto) { _, item in
+            Task {
+                if let data = try? await item?.loadTransferable(type: Data.self) {
+                    ticketData = data
+                }
+            }
+        }
+        .onChange(of: ticketData) { _, data in
+            guard let data else { return }
+            Task { await escanearTicket(data) }
+        }
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPickerView(imageData: $ticketData).ignoresSafeArea()
         }
     }
+
+    // MARK: - Nav header
+
+    private var navHeader: some View {
+        HStack {
+            Button("Cancelar") { dismiss() }
+                .font(.system(size: 16))
+                .foregroundStyle(Color.saLabel2)
+            Spacer()
+            Text("Nueva compra")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.saLabel)
+                .tracking(-0.4)
+            Spacer()
+            Button("Guardar") { guardar() }
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(canSave ? Color.saGreen : Color.saLabel4)
+                .disabled(!canSave)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 56)
+        .padding(.bottom, 16)
+    }
+
+    // MARK: - Total hero (read-only, live)
+
+    private var totalHero: some View {
+        VStack(spacing: 4) {
+            Text("TOTAL")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.saLabel3)
+                .tracking(0.2)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("$")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(Color.saLabel3)
+                Text(total == 0 ? "0" : total.formatted(.number.precision(.fractionLength(2))))
+                    .font(.system(size: 56, weight: .bold))
+                    .foregroundStyle(total == 0 ? Color.saLabel4 : Color.saLabel)
+                    .tracking(-2)
+                    .contentTransition(.numericText())
+                    .animation(.spring(duration: 0.3), value: total)
+            }
+            Text("Pesos argentinos")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.saLabel3)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+    }
+
+    // MARK: - Products section
+
+    private var productosSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("PRODUCTOS")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.saLabel3)
+                    .tracking(0.2)
+                    .padding(.horizontal, 4)
+                Spacer()
+                Button {
+                    showAgregarProducto = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text("Agregar")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.saGreen)
+                }
+            }
+
+            SACard(padding: 0) {
+                if productos.isEmpty {
+                    HStack(spacing: 10) {
+                        Image(systemName: "cart")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Color.saLabel4)
+                        Text("Agregá al menos un producto para guardar")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.saLabel3)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(20)
+                } else {
+                    ForEach(Array(productos.enumerated()), id: \.element.id) { idx, prod in
+                        productoRow(prod, isLast: idx == productos.count - 1)
+                    }
+
+                    Rectangle().fill(Color.saSep).frame(height: 0.5)
+
+                    HStack {
+                        Text("\(productos.count) producto\(productos.count == 1 ? "" : "s")")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.saLabel3)
+                        Spacer()
+                        Text(total.formatted(.currency(code: "ARS")))
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(Color.saGreen)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+            }
+
+            if isScanning {
+                HStack(spacing: 8) {
+                    ProgressView().scaleEffect(0.8)
+                    Text("Escaneando ticket…")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.saLabel3)
+                }
+                .padding(.horizontal, 4)
+            }
+
+            if let n = ocrDetected {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.saGreen)
+                    Text("Se detectaron **\(n)** producto\(n == 1 ? "" : "s") del ticket")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.saLabel3)
+                }
+                .padding(.horizontal, 4)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.spring(duration: 0.3), value: ocrDetected != nil)
+    }
+
+    @ViewBuilder
+    private func productoRow(_ prod: ProductoDraft, isLast: Bool) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8).fill(Color.saGreenBg)
+                Image(systemName: "bag.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.saGreen)
+            }
+            .frame(width: 32, height: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(prod.nombre)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Color.saLabel)
+                    .lineLimit(1)
+                if !prod.descripcion.isEmpty {
+                    Text(prod.descripcion)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.saLabel3)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            Text(prod.precio.formatted(.currency(code: "ARS")))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.saLabel)
+
+            Button {
+                withAnimation(.spring(duration: 0.25)) {
+                    productos.removeAll { $0.id == prod.id }
+                }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(Color.saLabel4)
+                    .font(.system(size: 18))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .overlay(alignment: .bottom) {
+            if !isLast {
+                Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 60)
+            }
+        }
+    }
+
+    // MARK: - Ticket section
+
+    private var ticketSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("TICKET")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.saLabel3)
+                .tracking(0.2)
+                .padding(.horizontal, 4)
+
+            SACard(padding: 0) {
+                if let data = ticketData, let img = UIImage(data: data) {
+                    HStack(spacing: 12) {
+                        Image(uiImage: img)
+                            .resizable().scaledToFill()
+                            .frame(width: 60, height: 76)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("ticket.jpg")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Color.saLabel)
+                            Text("Foto adjunta")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.saLabel3)
+                        }
+                        Spacer()
+                        Button { ticketData = nil } label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(Color.saDanger)
+                        }
+                    }
+                    .padding(16)
+                } else {
+                    Button { showTicketOptions = true } label: {
+                        VStack(spacing: 10) {
+                            Circle()
+                                .fill(Color.saGreenBg)
+                                .frame(width: 56, height: 56)
+                                .overlay(
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 24))
+                                        .foregroundStyle(Color.saGreen)
+                                )
+                            Text("Adjuntar foto del ticket")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(Color.saLabel)
+                            Text("Los productos se detectarán automáticamente con OCR")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.saLabel3)
+                                .multilineTextAlignment(.center)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(24)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    // MARK: - Row button helper
 
     @ViewBuilder
     private func rowButton(icon: String, iconBg: Color, title: String, value: String, isLast: Bool, action: @escaping () -> Void) -> some View {
@@ -205,7 +366,6 @@ struct NuevaCompraView: View {
                         .foregroundStyle(.white)
                 }
                 .frame(width: 32, height: 32)
-
                 Text(title)
                     .font(.system(size: 16))
                     .foregroundStyle(Color.saLabel)
@@ -230,12 +390,101 @@ struct NuevaCompraView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - OCR
+
+    private func escanearTicket(_ data: Data) async {
+        isScanning = true
+        ocrDetected = nil
+        let encontrados = await TicketOCRService.shared.extraerProductos(de: data)
+        isScanning = false
+
+        guard !encontrados.isEmpty else { return }
+        let existentes = Set(productos.map { $0.nombre.lowercased() })
+        let nuevos = encontrados.filter { !existentes.contains($0.nombre.lowercased()) }
+        guard !nuevos.isEmpty else { return }
+
+        withAnimation(.spring(duration: 0.3)) {
+            productos.append(contentsOf: nuevos)
+        }
+        ocrDetected = nuevos.count
+        try? await Task.sleep(for: .seconds(4))
+        withAnimation { ocrDetected = nil }
+    }
+
+    // MARK: - Save
+
     private func guardar() {
-        guard let total = Double(totalStr.replacingOccurrences(of: ",", with: ".")) else { return }
         let compra = Compra(fecha: fecha, supermercado: supermercado, total: total, metodoPago: metodoPago)
         compra.imagenTicket = ticketData
         modelContext.insert(compra)
+
+        for draft in productos {
+            let producto = Producto(codigo: draft.codigo, nombre: draft.nombre, descripcion: draft.descripcion, precio: draft.precio)
+            producto.compra = compra
+            modelContext.insert(producto)
+        }
         dismiss()
+    }
+}
+
+// MARK: - Agregar Producto Sheet
+
+struct AgregarProductoSheet: View {
+    @Binding var productos: [ProductoDraft]
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var nombre = ""
+    @State private var descripcion = ""
+    @State private var precioStr = ""
+
+    private var precio: Double {
+        Double(precioStr.replacingOccurrences(of: ",", with: ".")) ?? 0
+    }
+
+    private var canAdd: Bool {
+        !nombre.trimmingCharacters(in: .whitespaces).isEmpty && precio > 0
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.saBg.ignoresSafeArea()
+
+                VStack(spacing: 12) {
+                    SAField(placeholder: "Nombre del producto", text: $nombre, icon: "tag")
+                    SAField(placeholder: "Descripción (opcional)", text: $descripcion, icon: "text.alignleft")
+                    SAField(placeholder: "Precio", text: $precioStr, icon: "dollarsign")
+                        .keyboardType(.decimalPad)
+                        .onChange(of: precioStr) { _, v in
+                            precioStr = v.filter { $0.isNumber || $0 == "." || $0 == "," }
+                        }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .frame(maxHeight: .infinity, alignment: .top)
+            }
+            .navigationTitle("Nuevo producto")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancelar") { dismiss() }
+                        .foregroundStyle(Color.saGreen)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Agregar") {
+                        productos.append(ProductoDraft(
+                            nombre: nombre.trimmingCharacters(in: .whitespaces),
+                            descripcion: descripcion,
+                            precio: precio
+                        ))
+                        dismiss()
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(canAdd ? Color.saGreen : Color.saLabel4)
+                    .disabled(!canAdd)
+                }
+            }
+        }
     }
 }
 

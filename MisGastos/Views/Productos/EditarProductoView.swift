@@ -1,16 +1,33 @@
 import SwiftUI
 import SwiftData
 
-struct NuevoProductoView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
+struct EditarProductoView: View {
+    @Bindable var producto: Producto
     let compra: Compra
+    @Environment(\.dismiss) private var dismiss
 
-    @State private var codigo = ""
-    @State private var nombre = ""
-    @State private var descripcion = ""
-    @State private var precioStr = ""
+    @State private var codigo: String
+    @State private var nombre: String
+    @State private var descripcion: String
+    @State private var precioStr: String
     @State private var showScanner = false
+
+    init(producto: Producto, compra: Compra) {
+        self._producto = Bindable(producto)
+        self.compra = compra
+        self._codigo = State(initialValue: producto.codigo)
+        self._nombre = State(initialValue: producto.nombre)
+        self._descripcion = State(initialValue: producto.descripcion)
+        let p = producto.precio
+        let str = p.truncatingRemainder(dividingBy: 1) == 0
+            ? String(Int(p))
+            : String(format: "%.2f", p)
+        self._precioStr = State(initialValue: str)
+    }
+
+    private var canSave: Bool {
+        !nombre.isEmpty && (Double(precioStr.replacingOccurrences(of: ",", with: ".")) ?? 0) > 0
+    }
 
     var body: some View {
         NavigationStack {
@@ -35,7 +52,7 @@ struct NuevoProductoView: View {
                     }
                 }
             }
-            .navigationTitle(String(localized: "producto.nuevo.title"))
+            .navigationTitle("Editar producto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -43,7 +60,7 @@ struct NuevoProductoView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "action.save")) { guardar() }
-                        .disabled(nombre.isEmpty || precioStr.isEmpty)
+                        .disabled(!canSave)
                 }
             }
             .sheet(isPresented: $showScanner) {
@@ -53,33 +70,13 @@ struct NuevoProductoView: View {
     }
 
     private func guardar() {
-        guard let precio = Double(precioStr.replacingOccurrences(of: ",", with: ".")) else { return }
-        let producto = Producto(
-            codigo: codigo,
-            nombre: nombre,
-            descripcion: descripcion,
-            precio: precio
-        )
-        modelContext.insert(producto)
-        compra.productos.append(producto)
-        compra.total += precio
+        guard let nuevoPrecio = Double(precioStr.replacingOccurrences(of: ",", with: ".")) else { return }
+        let delta = nuevoPrecio - producto.precio
+        producto.codigo = codigo
+        producto.nombre = nombre
+        producto.descripcion = descripcion
+        producto.precio = nuevoPrecio
+        compra.total += delta
         dismiss()
-    }
-}
-
-struct ProductoRowView: View {
-    let producto: Producto
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(producto.nombre).font(.subheadline)
-                if !producto.codigo.isEmpty {
-                    Text(producto.codigo).font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            Text(producto.precio, format: .currency(code: "ARS"))
-                .font(.subheadline).foregroundStyle(Color.saGreen)
-        }
     }
 }

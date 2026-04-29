@@ -4,11 +4,28 @@ struct LoginView: View {
     @State private var viewModel = AuthViewModel()
     @State private var showRegister = false
     @State private var showForgot = false
+    @Environment(\.modelContext) private var modelContext
+    @AppStorage("isLoggedIn")   private var isLoggedIn: Bool = false
+    @AppStorage("usuarioEmail") private var usuarioEmail: String = ""
+
+    private let biometric = BiometricService.shared
+
+    private var showBiometric: Bool {
+        biometric.isAvailable && !usuarioEmail.isEmpty
+    }
+
+    private var biometricIcon: String {
+        biometric.biometricType == .faceID ? "faceid" : "touchid"
+    }
+
+    private var biometricLabel: String {
+        biometric.biometricType == .faceID ? "Continuar con Face ID" : "Continuar con Touch ID"
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.white.ignoresSafeArea()
+                Color.saBg.ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     ScrollView(showsIndicators: false) {
@@ -53,7 +70,7 @@ struct LoginView: View {
                             }
 
                             SAButton(title: "Iniciar sesión", isLoading: viewModel.isLoading) {
-                                Task { await viewModel.login() }
+                                Task { await viewModel.login(context: modelContext) }
                             }
 
                             // Divider
@@ -71,6 +88,30 @@ struct LoginView: View {
                                 socialBtn(icon: "apple.logo", label: "Apple")
                                 socialBtn(icon: "globe", label: "Google")
                             }
+
+                            // Biometric login (only when available + user logged in before)
+                            if showBiometric {
+                                Button {
+                                    Task {
+                                        let ok = await biometric.authenticate(reason: "Accedé a Súper Ahorro")
+                                        if ok { isLoggedIn = true }
+                                    }
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Image(systemName: biometricIcon)
+                                            .font(.system(size: 20))
+                                        Text(biometricLabel)
+                                            .font(.system(size: 15, weight: .semibold))
+                                    }
+                                    .foregroundStyle(Color.saGreen)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 50)
+                                    .background(Color.saGreenBg)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                }
+                                .buttonStyle(.plain)
+                                .padding(.top, 12)
+                            }
                         }
                         .padding(.horizontal, 24)
                     }
@@ -87,7 +128,7 @@ struct LoginView: View {
                     .padding(.vertical, 24)
                 }
             }
-            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
             .toolbarColorScheme(.light, for: .navigationBar)
             .sheet(isPresented: $showRegister) { RegisterView() }
             .sheet(isPresented: $showForgot) { ForgotPasswordView() }
@@ -106,11 +147,11 @@ struct LoginView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 50)
-        .background(Color.white)
+        .background(Color.saCard)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.18), lineWidth: 0.5)
+                .stroke(Color.saSep, lineWidth: 0.5)
         )
     }
 }

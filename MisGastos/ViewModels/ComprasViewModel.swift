@@ -1,5 +1,7 @@
-import SwiftUI
+import Foundation
+import Observation
 
+/// Carga y cachea la lista de supermercados desde la red.
 @Observable
 final class ComprasViewModel {
     var supermercados: [String] = []

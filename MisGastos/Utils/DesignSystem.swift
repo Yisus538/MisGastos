@@ -1,19 +1,74 @@
 import SwiftUI
 
 // MARK: - Color Tokens
+// All surface/label tokens use UIColor's dynamic provider so they
+// automatically switch between the light and dark variants both
+// when the system changes and when .preferredColorScheme() overrides it.
 extension Color {
+
+    // Brand greens — same in both modes
     static let saGreen      = Color(hex: "#22C55E")
     static let saGreenDark  = Color(hex: "#16A34A")
     static let saGreenLight = Color(hex: "#4ADE80")
-    static let saGreenBg    = Color(hex: "#22C55E").opacity(0.1)
-    static let saBg         = Color(hex: "#F6F8F6")
-    static let saCard       = Color.white
-    static let saLabel      = Color(hex: "#111111")
-    static let saLabel2     = Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.6)
-    static let saLabel3     = Color(hex: "#8E8E93")
-    static let saLabel4     = Color(hex: "#C7C7CC")
-    static let saSep        = Color(hex: "#E5E7EB")
-    static let saDanger     = Color(hex: "#EF4444")
+
+    // Green tinted background — slightly stronger in dark so it reads
+    static let saGreenBg = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 0.18)
+            : UIColor(red: 0.133, green: 0.773, blue: 0.369, alpha: 0.10)
+    })
+
+    // Main background
+    static let saBg = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.055, green: 0.063, blue: 0.082, alpha: 1)   // #0E1015
+            : UIColor(red: 0.965, green: 0.973, blue: 0.965, alpha: 1)   // #F6F8F6
+    })
+
+    // Elevated surface / card
+    static let saCard = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.114, green: 0.122, blue: 0.149, alpha: 1)   // #1D1F26
+            : UIColor(red: 1.000, green: 1.000, blue: 1.000, alpha: 1)   // #FFFFFF
+    })
+
+    // Primary text
+    static let saLabel = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.949, green: 0.949, blue: 0.969, alpha: 1)   // #F2F2F7
+            : UIColor(red: 0.067, green: 0.067, blue: 0.067, alpha: 1)   // #111111
+    })
+
+    // Secondary text (60 % opacity — iOS HIG secondary label)
+    static let saLabel2 = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.922, green: 0.922, blue: 0.961, alpha: 0.6)
+            : UIColor(red: 0.235, green: 0.235, blue: 0.263, alpha: 0.6)
+    })
+
+    // Tertiary text / placeholders
+    static let saLabel3 = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.388, green: 0.388, blue: 0.400, alpha: 1)   // #636366
+            : UIColor(red: 0.557, green: 0.557, blue: 0.576, alpha: 1)   // #8E8E93
+    })
+
+    // Quaternary / very muted
+    static let saLabel4 = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.227, green: 0.227, blue: 0.235, alpha: 1)   // #3A3A3C
+            : UIColor(red: 0.780, green: 0.780, blue: 0.800, alpha: 1)   // #C7C7CC
+    })
+
+    // Separator / divider
+    static let saSep = Color(UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor(red: 0.173, green: 0.173, blue: 0.180, alpha: 1)   // #2C2C2E
+            : UIColor(red: 0.898, green: 0.906, blue: 0.921, alpha: 1)   // #E5E7EB
+    })
+
+    // Danger — same in both modes
+    static let saDanger = Color(hex: "#EF4444")
 
     // Legacy aliases so old code still compiles
     static let brand        = saGreen
@@ -168,11 +223,11 @@ struct SAField: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 52)
-        .background(Color.white)
+        .background(Color.saCard)                         // adaptive: white / dark card
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.12), lineWidth: 1)
+                .stroke(Color.saSep, lineWidth: 1)        // adaptive separator
         )
     }
 }
@@ -188,7 +243,7 @@ struct SAButton: View {
         Button(action: action) {
             ZStack {
                 if isDestructive {
-                    RoundedRectangle(cornerRadius: 14).fill(Color.white)
+                    RoundedRectangle(cornerRadius: 14).fill(Color.saCard)  // adaptive
                     RoundedRectangle(cornerRadius: 14).stroke(Color.saSep, lineWidth: 1)
                 } else {
                     RoundedRectangle(cornerRadius: 14).fill(LinearGradient.saGreen)
@@ -208,7 +263,7 @@ struct SAButton: View {
     }
 }
 
-// MARK: - Legacy wrappers (NuevoProductoView, EditarPerfilView still use these)
+// MARK: - Legacy wrappers
 struct MGInputField: View {
     let label: String
     let placeholder: String
