@@ -3,7 +3,6 @@ import SwiftUI
 struct RegisterView: View {
     @State private var viewModel = AuthViewModel()
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     @State private var termsAccepted = true
 
     private var strengthLevel: Int {
@@ -106,7 +105,7 @@ struct RegisterView: View {
                     }
 
                     SAButton(title: "Crear cuenta", isLoading: viewModel.isLoading) {
-                        Task { await viewModel.register(context: modelContext) }
+                        Task { await viewModel.register() }
                     }
                     .disabled(!termsAccepted)
                     .padding(.top, 16)

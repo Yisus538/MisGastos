@@ -1,6 +1,6 @@
 # CLAUDE.md — Súper Ahorro iOS
 > Fuente de verdad del proyecto. Actualizá este archivo al final de cada ciclo de implementación.
-> Última actualización: 2026-04-29 (ciclo: exportación CSV/PDF + ActivitySheet + botón en HistorialView)
+> Última actualización: 2026-05-02 (ciclo: Apariencia — sheet triestado Claro/Oscuro/Sistema con mockups, sync Supabase, reemplaza isDarkMode)
 
 ---
 
@@ -25,42 +25,45 @@ MisGastos/
     ├── MisGastosApp.swift             ← entry point, modelContainer setup
     ├── ContentView.swift
     ├── Models/
-    │   ├── Compra.swift
+    │   ├── Compra.swift               ← +ticketURL: String? (Supabase Storage URL)
     │   ├── Producto.swift
-    │   └── Usuario.swift
+    │   └── Usuario.swift              ← deprecated (solo compat); auth ahora en Supabase
     ├── ViewModels/
-    │   ├── AuthViewModel.swift
+    │   ├── AuthViewModel.swift        ← usa SupabaseService (sin SwiftData/ModelContext)
     │   └── ComprasViewModel.swift
     ├── Views/
     │   ├── Auth/
     │   │   ├── SplashView.swift
-    │   │   ├── LoginView.swift
-    │   │   ├── RegisterView.swift
-    │   │   └── ForgotPasswordView.swift ← extraído de RegisterView.swift, flujo completo
+    │   │   ├── LoginView.swift        ← sin modelContext; login via Supabase
+    │   │   ├── RegisterView.swift     ← sin modelContext; registro via Supabase
+    │   │   └── ForgotPasswordView.swift ← reset real via supabase.auth.resetPasswordForEmail
     │   ├── Compras/
     │   │   ├── HomeView.swift
+    │   │   ├── HomeView.swift
     │   │   ├── HistorialView.swift
-    │   │   ├── NuevaCompraView.swift  ← incluye StorePickerSheet, PaymentPickerSheet
+    │   │   ├── NuevaCompraView.swift  ← guardar() async; ticket → Supabase Storage; sync compra en background
     │   │   ├── DetalleCompraView.swift
-    │   │   └── EditarCompraView.swift ← edición de compra existente
+    │   │   └── EditarCompraView.swift
     │   ├── Estadisticas/
     │   │   └── EstadisticasView.swift
     │   ├── Navigation/
-    │   │   └── MainTabView.swift
+    │   │   └── MainTabView.swift      ← tab Perfil muestra avatar circular del usuario (UIGraphicsImageRenderer)
     │   ├── Perfil/
-    │   │   ├── PerfilView.swift
-    │   │   ├── EditarPerfilView.swift
-    │   │   └── SettingsView.swift     ← incluye NotificationService (pendiente extraer a Services/)
+    │   │   ├── PerfilView.swift       ← logout llama SupabaseService.shared.logout(); avatar desde @AppStorage("avatarData")
+    │   │   ├── EditarPerfilView.swift ← PhotosPicker para cambiar foto; comprime a 300×300 JPEG; guarda en @AppStorage("avatarData")
+    │   │   └── SettingsView.swift     ← logout llama SupabaseService.shared.logout(); incluye NotificationService
     │   └── Productos/
-    │       ├── NuevoProductoView.swift    ← incluye ProductoRowView, scanner código de barras
-    │       └── EditarProductoView.swift   ← edición de producto existente, scanner código de barras
+    │       ├── NuevoProductoView.swift
+    │       └── EditarProductoView.swift
     ├── Services/
-    │   └── NetworkService.swift
+    │   ├── SupabaseService.swift      ← NUEVO: singleton; auth, compras, productos, storage, supermercados
+    │   └── NetworkService.swift       ← fetchSupermercados: Supabase → cache UserDefaults → hardcoded
     ├── Utils/
     │   ├── DesignSystem.swift
-    │   └── BarcodeScannerView.swift ← AVFoundation + UIViewControllerRepresentable, vibración al escanear
+    │   └── BarcodeScannerView.swift
     └── Resources/
-        └── Localizable.xcstrings
+        ├── Localizable.xcstrings
+        └── supabase_schema.sql        ← NUEVO: SQL para ejecutar en Supabase Dashboard
 ```
 
 ---
@@ -92,11 +95,13 @@ MisGastos/
     var total: Double
     var metodoPago: String = "Efectivo"
     var imagenTicket: Data?
+    var ticketURL: String? = nil      // URL firmada de Supabase Storage (reemplaza imagenTicket en flujo nuevo)
     @Relationship(deleteRule: .cascade) var productos: [Producto]
 }
 ```
 - Relación **uno-a-muchos** con `Producto` (cascade delete)
 - `total` se actualiza manualmente al agregar/editar productos
+- `ticketURL`: URL firmada de Supabase Storage (1h de validez). Si el upload falla, se usa `imagenTicket` como fallback local.
 
 ### `Producto` — `Models/Producto.swift`
 ```swift
@@ -137,12 +142,12 @@ MisGastos/
 
 | ViewModel | Patrón | Responsabilidad |
 |-----------|--------|----------------|
-| `AuthViewModel` | `@Observable` | Estado de login/registro. Persiste sesión con `UserDefaults` (no `@AppStorage` — los VMs no importan SwiftUI). |
-| `ComprasViewModel` | `@Observable` | Carga lista de supermercados desde API. |
+| `AuthViewModel` | `@Observable` | Estado de login/registro. Usa `SupabaseService` para auth. Persiste sesión con `UserDefaults`. **Ya no usa `ModelContext` ni SwiftData.** |
+| `ComprasViewModel` | `@Observable` | Carga lista de supermercados desde API (Supabase → cache → fallback). |
 
 **Patrón de instanciación**: `@State private var viewModel = AuthViewModel()` directamente en la View, sin `@StateObject`. Se usa `@Observable` de Swift 5.9, no `ObservableObject`.
 
-**Imports en ViewModels**: `import Foundation` + `import Observation` + `import SwiftData`. Nunca `import SwiftUI` en ViewModels — usar `UserDefaults` en lugar de `@AppStorage`.
+**Imports en ViewModels**: `import Foundation` + `import Observation`. Nunca `import SwiftUI` ni `import SwiftData` en ViewModels — usar `UserDefaults` en lugar de `@AppStorage`.
 
 ---
 
@@ -202,10 +207,23 @@ struct ProductoDraft: Identifiable, Equatable {
 ```
 - Modelo borrador local, usado en `NuevaCompraView` antes de persistir en SwiftData
 
+### `SupabaseService` — `Services/SupabaseService.swift`
+- Singleton: `SupabaseService.shared`
+- `client: SupabaseClient` — instancia compartida; URL y anon key en las constantes privadas
+- **Auth**: `login(email:password:)`, `register(email:password:nombre:)`, `logout()`, `resetPassword(email:)`, `nombreFromMetadata() -> String?`, `isSessionActive: Bool`
+- **Compras**: `fetchCompras() -> [CompraDTO]`, `crearCompra(id:fecha:supermercado:total:metodoPago:ticketURL:)`, `actualizarCompra(...)`, `borrarCompra(id:)`
+- **Productos**: `crearProducto(id:compraID:nombre:descripcion:codigo:precio:)`, `actualizarProducto(...)`, `borrarProducto(id:)`
+- **Storage**: `subirTicket(_ data: Data, compraID: UUID) async throws -> String` — sube a bucket `tickets-usuarios/{userID}/{compraID}.jpg`, devuelve URL firmada (1h)
+- **Supermercados**: `fetchSupermercados() async throws -> [String]` — lee tabla `supermercados` de Supabase
+- `SAError.noSession` — error cuando no hay sesión activa
+- `CompraDTO` — struct público para transferencia de datos desde Supabase
+
+⚠️ **Requiere**: SDK `supabase-swift` agregado en Xcode + valores `SUPABASE_URL` y `SUPABASE_ANON_KEY` en las constantes privadas.
+
 ### `NetworkService` — `Services/NetworkService.swift`
 - Singleton: `NetworkService.shared`
-- `fetchSupermercados() async throws -> [String]` — actualmente usa `https://jsonplaceholder.typicode.com/users`; mapea company.name. Fallback: `supermercadosFallback`
-- Patrón: URLSession + async/await
+- `fetchSupermercados() async throws -> [String]` — prioridad: Supabase tabla `supermercados` → caché UserDefaults (`cachedSupermercados`) → lista `supermercadosFallback` hardcodeada
+- Ya **no** usa JSONPlaceholder
 
 ### `BiometricService` — `Services/BiometricService.swift`
 - Singleton: `BiometricService.shared`
@@ -244,8 +262,9 @@ struct ProductoDraft: Identifiable, Equatable {
 | Eliminar producto | `DetalleCompraView.swift` | Context menu (long press en fila). Resta precio de compra.total. |
 | Historial de compras | `HistorialView.swift` | |
 | Estadísticas Swift Charts | `EstadisticasView.swift` | BarMark, LineMark+AreaMark, SectorMark (donut por tienda), productos más comprados. Rango 3m/6m/1a, comparación mes anterior, insights |
-| Persistencia SwiftData | `MisGastosApp.swift` | modelContainer con Compra, Producto, Usuario |
-| Networking URLSession/async-await | `NetworkService.swift` | |
+| Persistencia SwiftData | `MisGastosApp.swift` | modelContainer con Compra, Producto, Usuario (Usuario se mantiene por compat pero ya no se crea) |
+| Backend Supabase | `Services/SupabaseService.swift` | Auth bcrypt+JWT, PostgreSQL con RLS, Storage de tickets, supermercados dinámicos |
+| Networking URLSession/async-await | `NetworkService.swift` | Supermercados: Supabase → cache UserDefaults → hardcoded |
 | Notificaciones locales | `SettingsView.swift` | UNUserNotificationCenter, recordatorio semanal |
 | Internacionalización | `Localizable.xcstrings` | Claves en formulario de producto, acciones |
 | DesignSystem | `DesignSystem.swift` | Tokens de color, gradientes, componentes SA* |
@@ -265,30 +284,35 @@ struct ProductoDraft: Identifiable, Equatable {
 | ~~Captura desde cámara (no solo galería)~~ | ✅ Implementado | `Utils/CameraPickerView.swift` (UIImagePickerController + UIViewControllerRepresentable). `confirmationDialog` "Cámara / Galería" en `NuevaCompraView` y `DetalleCompraView`. |
 | ~~ViewModels sin import SwiftUI~~ | ✅ Implementado | `AuthViewModel` usa `UserDefaults`, `ComprasViewModel` usa `import Observation` |
 | ~~ContentUnavailableView en listas~~ | ✅ Implementado | `HomeView`, `HistorialView`, `ComparativaView` |
-| Persistencia perfil con SwiftData | ⬜ Falta | Sincronizar @AppStorage con modelo `Usuario` |
+| Persistencia perfil con SwiftData | ⬜ Falta | Sincronizar @AppStorage con modelo `perfiles` de Supabase (tabla ya creada con trigger) |
 | Extracción NotificationService | ⬜ Deuda técnica | Mover de SettingsView a `Services/NotificationService.swift` |
-| API real de supermercados | ⬜ Mejora | Reemplazar JSONPlaceholder en NetworkService |
+| ~~API real de supermercados~~ | ✅ Implementado | `NetworkService` usa tabla `supermercados` de Supabase con caché |
 
 ### Etapa Final (extras)
 | Feature | Estado |
 |---------|--------|
 | ~~OCR de tickets (Vision framework)~~ | ✅ Implementado | `Services/TicketOCRService.swift` — VNRecognizeTextRequest, integrado en `NuevaCompraView` al adjuntar ticket |
-| Sincronización iCloud (CloudKit) | ⬜ Falta |
-| Face ID / Touch ID (LocalAuthentication) | ⬜ Falta |
+| ~~Sincronización iCloud (CloudKit)~~ | ✅ Reemplazado por Supabase (mejor para TP) |
+| ~~Face ID / Touch ID (LocalAuthentication)~~ | ✅ Implementado | `BiometricService` + `LoginView`. Con Supabase: biometric valida localmente, sesión JWT persiste en Keychain. |
+| Sync DetalleCompra / EditarCompra → Supabase | ⬜ Próximo ciclo | Llamar `actualizarCompra`/`borrarCompra` en DetalleCompraView y EditarCompraView |
+| Perfil: sincronizar con tabla `perfiles` | ⬜ Próximo ciclo | Leer/escribir nombre y teléfono desde Supabase en EditarPerfilView |
+| Sign in with Apple / Google OAuth | ⬜ Próximo ciclo | Requiere configuración URL scheme en Xcode + Supabase OAuth providers |
 | Deep links / navegación programática avanzada | ⬜ Falta |
 
 ---
 
 ## Decisiones de arquitectura
 
-1. **SwiftData** en vez de CoreData o SQLite — decisión tomada desde el inicio. No revertir.
+1. **SwiftData** como caché local + **Supabase** como fuente de verdad en la nube — arquitectura híbrida offline-first. No revertir ninguna de las dos.
 2. **`@Observable`** (Swift 5.9) en vez de `ObservableObject` — más simple, no requiere `@Published`. ViewModels se instancian con `@State` en la View, no con `@StateObject`.
-3. **`@AppStorage`** para la sesión activa (isLoggedIn, usuarioEmail, usuarioNombre, isDarkMode). El modelo `Usuario` en SwiftData es paralelo y aún no se sincroniza con @AppStorage.
+3. **`@AppStorage`** para la sesión activa (isLoggedIn, usuarioEmail, usuarioNombre, isDarkMode). Supabase SDK guarda el JWT en Keychain automáticamente.
 4. **Custom DesignSystem** centralizado en `DesignSystem.swift`. Todos los tokens de color son adaptativos (UIColor con closure para dark/light mode). Nunca hardcodear colores en Views.
 5. **NavigationStack** por tab (no global). Cada tab tiene su propio stack.
 6. **Prefijo `SA`** para todos los componentes compartidos del DesignSystem.
 7. **Lógica en ViewModels**, cero lógica de negocio en Views. Las Views solo llaman métodos del ViewModel.
 8. **`Localizable.xcstrings`** (formato moderno de Xcode 15+), no `.strings`. Usar `String(localized:)` o `.localized` en SwiftUI Text.
+9. **`SupabaseService`** como singleton central. `AuthViewModel` usa `SupabaseService.shared` — ya no toma `ModelContext`. El modelo `Usuario` en SwiftData se mantiene en el container pero no se crea en código nuevo (deprecado).
+10. **Sync offline-first**: al crear compra, se inserta en SwiftData inmediatamente, luego se sincroniza a Supabase en background (`Task.detached`). Si falla el sync, el dato queda en SwiftData local.
 
 ---
 

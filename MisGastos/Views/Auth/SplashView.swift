@@ -1,9 +1,13 @@
 import SwiftUI
 
 struct SplashView: View {
-    @AppStorage("isLoggedIn")  private var isLoggedIn:  Bool = false
-    @AppStorage("isDarkMode")  private var isDarkMode:  Bool = false
+    @AppStorage("isLoggedIn")     private var isLoggedIn:    Bool   = false
+    @AppStorage("aparienciaMode") private var aparienciaRaw: String = "sistema"
     @State private var showMain = false
+
+    private var preferredScheme: ColorScheme? {
+        (AparienciaMode(rawValue: aparienciaRaw) ?? .sistema).colorScheme
+    }
     @State private var logoScale: CGFloat = 0.6
     @State private var logoOpacity: Double = 0
     @State private var textOpacity: Double = 0
@@ -15,7 +19,7 @@ struct SplashView: View {
             Group {
                 if isLoggedIn { MainTabView() } else { LoginView() }
             }
-            .preferredColorScheme(isDarkMode ? .dark : nil)
+            .preferredColorScheme(preferredScheme)
         } else {
             ZStack {
                 LinearGradient.saGreen.ignoresSafeArea()
@@ -68,6 +72,16 @@ struct SplashView: View {
                     textOffset = 0
                 }
                 dotAnimating = true
+                // Espera que la sesión esté lista y sincroniza preferencias
+                if isLoggedIn {
+                    Task {
+                        await SupabaseService.shared.restaurarSesion()
+                        if let remote = try? await SupabaseService.shared.fetchApariencia(),
+                           AparienciaMode(rawValue: remote) != nil {
+                            aparienciaRaw = remote
+                        }
+                    }
+                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
                     withAnimation(.easeInOut(duration: 0.3)) { showMain = true }
                 }

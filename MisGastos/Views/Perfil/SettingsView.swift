@@ -2,13 +2,18 @@ import SwiftUI
 import UserNotifications
 
 struct SettingsView: View {
-    @AppStorage("isLoggedIn")  private var isLoggedIn:  Bool = false
-    @AppStorage("isDarkMode")  private var isDarkMode:  Bool = false
-    @State private var notificaciones = false
-    @AppStorage("presupuestoActivo") private var presupuestoActivo: Bool = false
-    @AppStorage("presupuestoMensual") private var presupuesto: Double = 0
+    @AppStorage("isLoggedIn")      private var isLoggedIn:    Bool   = false
+    @AppStorage("aparienciaMode")  private var aparienciaRaw: String = "sistema"
+    @State private var notificaciones  = false
+    @State private var showApariencia  = false
+    @AppStorage("presupuestoActivo")  private var presupuestoActivo: Bool   = false
+    @AppStorage("presupuestoMensual") private var presupuesto:       Double = 0
     @State private var presupuestoStr = ""
     @Environment(\.dismiss) private var dismiss
+
+    private var aparienciaLabel: String {
+        (AparienciaMode(rawValue: aparienciaRaw) ?? .sistema).label
+    }
 
     var body: some View {
         ZStack {
@@ -61,8 +66,10 @@ struct SettingsView: View {
                         // Apariencia
                         sectionLabel("Apariencia").padding(.top, 22)
                         SACard(padding: 0) {
-                            toggleRow(icon: "moon.fill", iconBg: Color(hex: "#6366F1"), title: "Modo oscuro", binding: $isDarkMode, isLast: false)
-                            plainRow(icon: "list.bullet", iconBg: Color(hex: "#8B5CF6"), title: "Densidad", value: "Cómoda", isLast: true)
+                            buttonRow(icon: "eye.fill", iconBg: Color(hex: "#6366F1"),
+                                      title: "Apariencia", value: aparienciaLabel, isLast: true) {
+                                showApariencia = true
+                            }
                         }
 
                         // Datos
@@ -93,7 +100,10 @@ struct SettingsView: View {
                         }
 
                         // Logout
-                        Button(action: { isLoggedIn = false }) {
+                        Button {
+                            Task { try? await SupabaseService.shared.logout() }
+                            isLoggedIn = false
+                        } label: {
                             Text("Cerrar sesión")
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(Color.saDanger)
@@ -110,6 +120,7 @@ struct SettingsView: View {
                 }
             }
         }
+        .sheet(isPresented: $showApariencia) { AparienciaSheet() }
     }
 
     @ViewBuilder
@@ -181,6 +192,40 @@ struct SettingsView: View {
                 Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 62)
             }
         }
+    }
+
+    @ViewBuilder
+    private func buttonRow(icon: String, iconBg: Color, title: String, value: String, isLast: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8).fill(iconBg)
+                    Image(systemName: icon)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 32, height: 32)
+                Text(title)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.saLabel)
+                Spacer()
+                Text(value)
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.saLabel3)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.saLabel4)
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 50)
+            .overlay(alignment: .bottom) {
+                if !isLast {
+                    Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 62)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

@@ -5,6 +5,7 @@ struct PerfilView: View {
     @AppStorage("usuarioNombre") private var nombre: String = ""
     @AppStorage("usuarioEmail")  private var email:  String = ""
     @AppStorage("isLoggedIn")    private var isLoggedIn: Bool = false
+    @AppStorage("avatarData")    private var avatarData: Data = Data()
     @Query private var compras: [Compra]
     @State private var showSettings = false
     @State private var showEditar = false
@@ -65,20 +66,29 @@ struct PerfilView: View {
 
                             HStack(spacing: 14) {
                                 // Avatar
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [Color(hex: "#FEF3C7"), Color(hex: "#FBBF24")],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                        .frame(width: 72, height: 72)
-                                        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
-                                    Text(initials)
-                                        .font(.system(size: 28, weight: .bold))
-                                        .foregroundStyle(Color(hex: "#92400E"))
+                                Group {
+                                    if !avatarData.isEmpty, let uiImg = UIImage(data: avatarData) {
+                                        Image(uiImage: uiImg)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 72, height: 72)
+                                            .clipShape(Circle())
+                                            .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+                                    } else {
+                                        ZStack {
+                                            Circle()
+                                                .fill(LinearGradient(
+                                                    colors: [Color(hex: "#FEF3C7"), Color(hex: "#FBBF24")],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ))
+                                                .frame(width: 72, height: 72)
+                                                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+                                            Text(initials)
+                                                .font(.system(size: 28, weight: .bold))
+                                                .foregroundStyle(Color(hex: "#92400E"))
+                                        }
+                                    }
                                 }
 
                                 VStack(alignment: .leading, spacing: 4) {
@@ -187,7 +197,10 @@ struct PerfilView: View {
                         }
 
                         // Logout
-                        Button(action: { isLoggedIn = false }) {
+                        Button {
+                            Task { try? await SupabaseService.shared.logout() }
+                            isLoggedIn = false
+                        } label: {
                             Text("Cerrar sesión")
                                 .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(Color.saDanger)

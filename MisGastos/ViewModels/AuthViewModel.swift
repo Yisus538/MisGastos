@@ -1,8 +1,6 @@
 import Foundation
 import Observation
-import SwiftData
 
-/// Gestiona el estado del formulario de autenticación y ejecuta login/registro contra SwiftData.
 @Observable
 final class AuthViewModel {
     var email: String = ""
@@ -12,37 +10,39 @@ final class AuthViewModel {
     var errorMessage: String?
 
     private let defaults = UserDefaults.standard
+    private let supabase = SupabaseService.shared
 
-    func login(context: ModelContext) async {
+    func login() async {
         guard !email.isEmpty, !password.isEmpty else {
             errorMessage = "Completá todos los campos"
             return
         }
         isLoading = true
         defer { isLoading = false }
-        try? await Task.sleep(for: .seconds(0.6))
+        errorMessage = nil
 
         let emailNorm = email.lowercased().trimmingCharacters(in: .whitespaces)
-        let descriptor = FetchDescriptor<Usuario>(
-            predicate: #Predicate<Usuario> { $0.email == emailNorm }
-        )
-        let resultados = (try? context.fetch(descriptor)) ?? []
-
-        guard let usuario = resultados.first else {
-            errorMessage = "No encontramos una cuenta con ese email"
-            return
+        do {
+            try await supabase.login(email: emailNorm, password: password)
+            defaults.set(emailNorm, forKey: "usuarioEmail")
+            defaults.set(true, forKey: "isLoggedIn")
+            let nombreGuardado = supabase.nombreFromMetadata() ?? emailNorm
+            defaults.set(nombreGuardado, forKey: "usuarioNombre")
+        } catch {
+            let msg = error.localizedDescription.lowercased()
+            if msg.contains("email not confirmed") || msg.contains("not confirmed") {
+                errorMessage = "Confirmá tu email antes de iniciar sesión. Revisá tu bandeja de entrada."
+            } else if msg.contains("invalid") || msg.contains("credentials") || msg.contains("wrong") {
+                errorMessage = "Email o contraseña incorrectos"
+            } else if msg.contains("network") || msg.contains("connection") || msg.contains("offline") {
+                errorMessage = "Sin conexión a internet. Verificá tu red."
+            } else {
+                errorMessage = "No se pudo iniciar sesión. Intentá de nuevo."
+            }
         }
-        guard usuario.password == password else {
-            errorMessage = "Contraseña incorrecta"
-            return
-        }
-
-        defaults.set(usuario.email,  forKey: "usuarioEmail")
-        defaults.set(usuario.nombre, forKey: "usuarioNombre")
-        defaults.set(true,           forKey: "isLoggedIn")
     }
 
-    func register(context: ModelContext) async {
+    func register() async {
         guard !nombre.isEmpty, !email.isEmpty, !password.isEmpty else {
             errorMessage = "Completá todos los campos"
             return
@@ -53,23 +53,30 @@ final class AuthViewModel {
         }
         isLoading = true
         defer { isLoading = false }
-        try? await Task.sleep(for: .seconds(0.6))
+        errorMessage = nil
 
         let emailNorm = email.lowercased().trimmingCharacters(in: .whitespaces)
-        let descriptor = FetchDescriptor<Usuario>(
-            predicate: #Predicate<Usuario> { $0.email == emailNorm }
-        )
-        let existentes = (try? context.fetch(descriptor)) ?? []
-        guard existentes.isEmpty else {
-            errorMessage = "Ya existe una cuenta con ese email"
-            return
+        do {
+            try await supabase.register(email: emailNorm, password: password, nombre: nombre)
+            defaults.set(emailNorm, forKey: "usuarioEmail")
+            defaults.set(nombre, forKey: "usuarioNombre")
+
+            // Si Supabase creó sesión activa → confirmación de email desactivada → acceso directo
+            // Si no hay sesión → confirmación requerida → el usuario debe confirmar su email
+            if supabase.isSessionActive {
+                defaults.set(true, forKey: "isLoggedIn")
+            } else {
+                errorMessage = "Cuenta creada. Revisá tu email para confirmarla antes de iniciar sesión."
+            }
+        } catch {
+            let msg = error.localizedDescription.lowercased()
+            if msg.contains("already registered") || msg.contains("already exists") || msg.contains("user already") {
+                errorMessage = "Ya existe una cuenta con ese email"
+            } else if msg.contains("password") && msg.contains("weak") {
+                errorMessage = "La contraseña es muy débil. Usá al menos 6 caracteres con letras y números."
+            } else {
+                errorMessage = error.localizedDescription
+            }
         }
-
-        let usuario = Usuario(nombre: nombre, email: emailNorm, password: password)
-        context.insert(usuario)
-
-        defaults.set(emailNorm, forKey: "usuarioEmail")
-        defaults.set(nombre,    forKey: "usuarioNombre")
-        defaults.set(true,      forKey: "isLoggedIn")
     }
 }

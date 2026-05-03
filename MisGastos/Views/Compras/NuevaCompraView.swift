@@ -19,10 +19,11 @@ struct NuevaCompraView: View {
     @State private var showCamera = false
     @State private var showGallery = false
     @State private var isScanning = false
+    @State private var isGuardando = false
     @State private var ocrDetected: Int?
 
     private var total: Double { productos.reduce(0) { $0 + $1.precio } }
-    private var canSave: Bool { !productos.isEmpty && !isScanning }
+    private var canSave: Bool { !productos.isEmpty && !isScanning && !isGuardando }
 
     var body: some View {
         ZStack {
@@ -124,7 +125,7 @@ struct NuevaCompraView: View {
                 .foregroundStyle(Color.saLabel)
                 .tracking(-0.4)
             Spacer()
-            Button("Guardar") { guardar() }
+            Button("Guardar") { Task { await guardar() } }
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(canSave ? Color.saGreen : Color.saLabel4)
                 .disabled(!canSave)
@@ -413,9 +414,21 @@ struct NuevaCompraView: View {
 
     // MARK: - Save
 
-    private func guardar() {
+    private func guardar() async {
+        isGuardando = true
+        defer { isGuardando = false }
+
         let compra = Compra(fecha: fecha, supermercado: supermercado, total: total, metodoPago: metodoPago)
-        compra.imagenTicket = ticketData
+
+        // Intentar subir ticket a Supabase Storage; si falla, guardar localmente
+        if let data = ticketData {
+            if let url = try? await SupabaseService.shared.subirTicket(data, compraID: compra.id) {
+                compra.ticketURL = url
+            } else {
+                compra.imagenTicket = data
+            }
+        }
+
         modelContext.insert(compra)
 
         for draft in productos {
@@ -423,6 +436,23 @@ struct NuevaCompraView: View {
             producto.compra = compra
             modelContext.insert(producto)
         }
+
+        // Sync a Supabase en background (fire and forget)
+        let snap = (compra.id, compra.fecha, compra.supermercado, compra.total, compra.metodoPago, compra.ticketURL)
+        let prodSnaps = productos.map { ($0.id, $0.nombre, $0.descripcion, $0.codigo, $0.precio) }
+        Task.detached {
+            try? await SupabaseService.shared.crearCompra(
+                id: snap.0, fecha: snap.1, supermercado: snap.2,
+                total: snap.3, metodoPago: snap.4, ticketURL: snap.5
+            )
+            for (pid, nombre, desc, cod, precio) in prodSnaps {
+                try? await SupabaseService.shared.crearProducto(
+                    id: pid, compraID: snap.0, nombre: nombre,
+                    descripcion: desc, codigo: cod, precio: precio
+                )
+            }
+        }
+
         dismiss()
     }
 }

@@ -9,6 +9,7 @@ final class Compra {
     var total: Double
     var metodoPago: String = "Efectivo"
     var imagenTicket: Data?
+    var ticketURL: String? = nil
     @Relationship(deleteRule: .cascade) var productos: [Producto]
 
     init(fecha: Date, supermercado: String, total: Double, metodoPago: String = "Efectivo") {

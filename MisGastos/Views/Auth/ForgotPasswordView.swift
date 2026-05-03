@@ -141,8 +141,10 @@ struct ForgotPasswordView: View {
 
     private func enviar() async {
         isLoading = true
-        try? await Task.sleep(for: .seconds(1.2))
-        isLoading = false
+        defer { isLoading = false }
+        let emailNorm = email.lowercased().trimmingCharacters(in: .whitespaces)
+        // Siempre mostramos "enviado" para no revelar si el email existe
+        try? await SupabaseService.shared.resetPassword(email: emailNorm)
         withAnimation(.easeInOut(duration: 0.3)) {
             enviado = true
         }

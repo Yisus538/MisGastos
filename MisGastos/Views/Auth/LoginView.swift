@@ -4,7 +4,6 @@ struct LoginView: View {
     @State private var viewModel = AuthViewModel()
     @State private var showRegister = false
     @State private var showForgot = false
-    @Environment(\.modelContext) private var modelContext
     @AppStorage("isLoggedIn")   private var isLoggedIn: Bool = false
     @AppStorage("usuarioEmail") private var usuarioEmail: String = ""
 
@@ -70,7 +69,7 @@ struct LoginView: View {
                             }
 
                             SAButton(title: "Iniciar sesión", isLoading: viewModel.isLoading) {
-                                Task { await viewModel.login(context: modelContext) }
+                                Task { await viewModel.login() }
                             }
 
                             // Divider
