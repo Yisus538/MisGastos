@@ -96,8 +96,14 @@ struct HomeView: View {
         } message: {
             Text("Gastaste \(totalEsteMes.formatted(.currency(code: "ARS"))) este mes, superando tu límite de \(presupuesto.formatted(.currency(code: "ARS"))) por \((totalEsteMes - presupuesto).formatted(.currency(code: "ARS"))).")
         }
-        .onAppear { verificarPresupuesto() }
-        .onChange(of: totalEsteMes) { _, _ in verificarPresupuesto() }
+        .onAppear {
+            verificarPresupuesto()
+            writeWidgetData()
+        }
+        .onChange(of: totalEsteMes) { _, _ in
+            verificarPresupuesto()
+            writeWidgetData()
+        }
     }
 
     // MARK: - Header
@@ -352,6 +358,16 @@ struct HomeView: View {
         guard presupuestoAlertaMes != mesKey else { return }
         presupuestoAlertaMes = mesKey
         showBudgetAlert = true
+    }
+
+    private func writeWidgetData() {
+        WidgetDataWriter.write(
+            totalMes: totalEsteMes,
+            nombreMes: Date().formatted(.dateTime.month(.wide)).capitalized,
+            cantidadCompras: comprasEsteMes.count,
+            presupuesto: presupuesto,
+            presupuestoActivo: presupuestoActivo
+        )
     }
 
     private var emptyState: some View {

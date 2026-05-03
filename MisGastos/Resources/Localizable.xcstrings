@@ -7,6 +7,9 @@
     " y la " : {
 
     },
+    "—" : {
+
+    },
     "¿Estás seguro? Esta acción no se puede deshacer." : {
 
     },
@@ -57,6 +60,16 @@
     },
     "%lld productos" : {
 
+    },
+    "%lld resultado%@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld resultado%2$@"
+          }
+        }
+      }
     },
     "%lld%%" : {
 
@@ -474,6 +487,9 @@
     "Fecha" : {
 
     },
+    "Filtros avanzados" : {
+
+    },
     "Foto adjunta" : {
 
     },
@@ -677,6 +693,9 @@
     "Límite superado" : {
 
     },
+    "Limpiar" : {
+
+    },
     "login.button" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -778,6 +797,9 @@
 
     },
     "Mi compra" : {
+
+    },
+    "Ninguna compra coincide con los filtros aplicados." : {
 
     },
     "No recibí el correo" : {
@@ -1259,6 +1281,9 @@
 
     },
     "Sin datos para el período" : {
+
+    },
+    "Sin resultados" : {
 
     },
     "stats.compras" : {
