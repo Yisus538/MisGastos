@@ -21,6 +21,8 @@ struct NuevaCompraView: View {
     @State private var isScanning = false
     @State private var isGuardando = false
     @State private var ocrDetected: Int?
+    @State private var editarProducto: ProductoDraft?
+    @AppStorage("ocrAutomatico") private var ocrAutomatico: Bool = true
 
     private var total: Double { productos.reduce(0) { $0 + $1.precio } }
     private var canSave: Bool { !productos.isEmpty && !isScanning && !isGuardando }
@@ -90,6 +92,9 @@ struct NuevaCompraView: View {
         .sheet(isPresented: $showStorePicker) { StorePickerSheet(selected: $supermercado) }
         .sheet(isPresented: $showPaymentPicker) { PaymentPickerSheet(selected: $metodoPago) }
         .sheet(isPresented: $showAgregarProducto) { AgregarProductoSheet(productos: $productos) }
+        .sheet(item: $editarProducto) { prod in
+            AgregarProductoSheet(productos: $productos, editando: prod)
+        }
         .confirmationDialog("Adjuntar ticket", isPresented: $showTicketOptions) {
             Button("Cámara") { showCamera = true }
             Button("Galería") { showGallery = true }
@@ -104,7 +109,7 @@ struct NuevaCompraView: View {
             }
         }
         .onChange(of: ticketData) { _, data in
-            guard let data else { return }
+            guard let data, ocrAutomatico else { return }
             Task { await escanearTicket(data) }
         }
         .fullScreenCover(isPresented: $showCamera) {
@@ -247,32 +252,41 @@ struct NuevaCompraView: View {
     @ViewBuilder
     private func productoRow(_ prod: ProductoDraft, isLast: Bool) -> some View {
         HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8).fill(Color.saGreenBg)
-                Image(systemName: "bag.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.saGreen)
-            }
-            .frame(width: 32, height: 32)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(prod.nombre)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.saLabel)
-                    .lineLimit(1)
-                if !prod.descripcion.isEmpty {
-                    Text(prod.descripcion)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.saLabel3)
-                        .lineLimit(1)
+            // Área tapeable para editar
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8).fill(Color.saGreenBg)
+                    Image(systemName: "bag.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.saGreen)
                 }
+                .frame(width: 32, height: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(prod.nombre)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.saLabel)
+                        .lineLimit(1)
+                    if !prod.descripcion.isEmpty {
+                        Text(prod.descripcion)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.saLabel3)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                Text(prod.precio.formatted(.currency(code: "ARS")))
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.saLabel)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.saLabel4)
             }
-
-            Spacer()
-
-            Text(prod.precio.formatted(.currency(code: "ARS")))
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.saLabel)
+            .contentShape(Rectangle())
+            .onTapGesture { editarProducto = prod }
 
             Button {
                 withAnimation(.spring(duration: 0.25)) {
@@ -340,7 +354,9 @@ struct NuevaCompraView: View {
                             Text("Adjuntar foto del ticket")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(Color.saLabel)
-                            Text("Los productos se detectarán automáticamente con OCR")
+                            Text(ocrAutomatico
+                                 ? "Los productos se detectarán automáticamente con OCR"
+                                 : "OCR desactivado — agregá productos manualmente")
                                 .font(.system(size: 13))
                                 .foregroundStyle(Color.saLabel3)
                                 .multilineTextAlignment(.center)
@@ -461,6 +477,7 @@ struct NuevaCompraView: View {
 
 struct AgregarProductoSheet: View {
     @Binding var productos: [ProductoDraft]
+    var editando: ProductoDraft? = nil
     @Environment(\.dismiss) private var dismiss
 
     @State private var nombre = ""
@@ -471,9 +488,11 @@ struct AgregarProductoSheet: View {
         Double(precioStr.replacingOccurrences(of: ",", with: ".")) ?? 0
     }
 
-    private var canAdd: Bool {
+    private var canConfirm: Bool {
         !nombre.trimmingCharacters(in: .whitespaces).isEmpty && precio > 0
     }
+
+    private var isEditing: Bool { editando != nil }
 
     var body: some View {
         NavigationStack {
@@ -493,7 +512,7 @@ struct AgregarProductoSheet: View {
                 .padding(.top, 16)
                 .frame(maxHeight: .infinity, alignment: .top)
             }
-            .navigationTitle("Nuevo producto")
+            .navigationTitle(isEditing ? "Editar producto" : "Nuevo producto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -501,17 +520,31 @@ struct AgregarProductoSheet: View {
                         .foregroundStyle(Color.saGreen)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Agregar") {
-                        productos.append(ProductoDraft(
-                            nombre: nombre.trimmingCharacters(in: .whitespaces),
-                            descripcion: descripcion,
-                            precio: precio
-                        ))
+                    Button(isEditing ? "Guardar" : "Agregar") {
+                        let nombreFinal = nombre.trimmingCharacters(in: .whitespaces)
+                        if let p = editando, let idx = productos.firstIndex(where: { $0.id == p.id }) {
+                            productos[idx].nombre = nombreFinal
+                            productos[idx].descripcion = descripcion
+                            productos[idx].precio = precio
+                        } else {
+                            productos.append(ProductoDraft(
+                                nombre: nombreFinal,
+                                descripcion: descripcion,
+                                precio: precio
+                            ))
+                        }
                         dismiss()
                     }
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(canAdd ? Color.saGreen : Color.saLabel4)
-                    .disabled(!canAdd)
+                    .foregroundStyle(canConfirm ? Color.saGreen : Color.saLabel4)
+                    .disabled(!canConfirm)
+                }
+            }
+            .onAppear {
+                if let p = editando {
+                    nombre = p.nombre
+                    descripcion = p.descripcion
+                    precioStr = p.precio == 0 ? "" : String(format: "%.2f", p.precio)
                 }
             }
         }

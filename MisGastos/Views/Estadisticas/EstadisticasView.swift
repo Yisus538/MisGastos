@@ -75,6 +75,12 @@ struct EstadisticasView: View {
             .map { $0 }
     }
 
+    private var statusBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.top }
+            .first ?? 50
+    }
+
     var body: some View {
         ZStack {
             Color.saBg.ignoresSafeArea()
@@ -91,7 +97,7 @@ struct EstadisticasView: View {
                             .font(.system(size: 15))
                             .foregroundStyle(Color.saLabel3)
                     }
-                    .padding(.top, 60)
+                    .padding(.top, statusBarHeight + 8)
                     .padding(.horizontal, 20)
 
                     // Range picker
@@ -301,6 +307,7 @@ struct EstadisticasView: View {
                     .padding(.bottom, 24)
                 }
             }
+            .ignoresSafeArea(edges: .top)
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)

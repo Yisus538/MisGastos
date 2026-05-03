@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var showApariencia  = false
     @AppStorage("presupuestoActivo")  private var presupuestoActivo: Bool   = false
     @AppStorage("presupuestoMensual") private var presupuesto:       Double = 0
+    @AppStorage("ocrAutomatico")      private var ocrAutomatico:     Bool   = true
     @State private var presupuestoStr = ""
     @Environment(\.dismiss) private var dismiss
 
@@ -70,6 +71,18 @@ struct SettingsView: View {
                                       title: "Apariencia", value: aparienciaLabel, isLast: true) {
                                 showApariencia = true
                             }
+                        }
+
+                        // Compras
+                        sectionLabel("Compras").padding(.top, 22)
+                        SACard(padding: 0) {
+                            toggleRow(
+                                icon: "sparkles",
+                                iconBg: Color(hex: "#FF9500"),
+                                title: "OCR automático de tickets",
+                                binding: $ocrAutomatico,
+                                isLast: true
+                            )
                         }
 
                         // Datos

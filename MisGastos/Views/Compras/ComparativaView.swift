@@ -52,6 +52,12 @@ struct ComparativaView: View {
             : comparativas.filter { $0.nombre.localizedCaseInsensitiveContains(busqueda) }
     }
 
+    private var statusBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.top }
+            .first ?? 50
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -70,7 +76,7 @@ struct ComparativaView: View {
                         .foregroundStyle(Color.saLabel3)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 60)
+                .padding(.top, statusBarHeight + 8)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
 
@@ -126,6 +132,7 @@ struct ComparativaView: View {
                     }
                 }
             }
+            .ignoresSafeArea(edges: .top)
         }
         .toolbar(.hidden, for: .navigationBar)
     }

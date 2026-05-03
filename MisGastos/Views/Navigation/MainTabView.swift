@@ -17,7 +17,7 @@ struct MainTabView: View {
             // Contenido se puede desplazar detrás del glass — inset solo reserva
             // espacio para que el último item no quede permanentemente oculto
             .safeAreaInset(edge: .bottom) {
-                Color.clear.frame(height: pillHeight + safeAreaBottom)
+                Color.clear.frame(height: pillHeight + safeAreaBottom + 12)
             }
 
             SATabBar(selected: $selectedTab, avatarData: avatarData)

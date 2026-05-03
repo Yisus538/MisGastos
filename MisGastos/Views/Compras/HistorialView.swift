@@ -35,6 +35,12 @@ struct HistorialView: View {
             .map { (key: $0.key, compras: $0.value.sorted { $0.fecha > $1.fecha }) }
     }
 
+    private var statusBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.keyWindow?.safeAreaInsets.top }
+            .first ?? 50
+    }
+
     private func nombreMes(_ key: String) -> String {
         if let compra = filtradas.first(where: { c in
             let comps = groupCal.dateComponents([.year, .month], from: c.fecha)
@@ -68,7 +74,7 @@ struct HistorialView: View {
                             }
                         }
                     }
-                    .padding(.top, 60)
+                    .padding(.top, statusBarHeight + 8)
                     .padding(.horizontal, 20)
 
                     // Search field
@@ -127,6 +133,7 @@ struct HistorialView: View {
                     .padding(.bottom, 24)
                 }
             }
+            .ignoresSafeArea(edges: .top)
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.light, for: .navigationBar)
