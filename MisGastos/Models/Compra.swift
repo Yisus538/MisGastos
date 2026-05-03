@@ -4,6 +4,7 @@ import Foundation
 @Model
 final class Compra {
     var id: UUID
+    var userId: String          // ← NUEVO: filtra compras por usuario
     var fecha: Date
     var supermercado: String
     var total: Double
@@ -15,6 +16,7 @@ final class Compra {
 
     init(fecha: Date, supermercado: String, total: Double, metodoPago: String = "Efectivo") {
         self.id = UUID()
+        self.userId = SupabaseService.shared.currentUserID?.uuidString ?? "unknown"
         self.fecha = fecha
         self.supermercado = supermercado
         self.total = total

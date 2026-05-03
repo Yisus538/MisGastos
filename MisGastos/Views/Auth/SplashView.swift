@@ -77,13 +77,15 @@ struct SplashView: View {
                 }
                 dotAnimating = true
                 Task {
-                    // Fetch preferencias y sync de compras pendientes.
-                    // SyncService comprueba isSessionActive internamente; no hay que guardar.
+                    // Restaurar sesión desde Keychain antes de cualquier operación.
+                    await SupabaseService.shared.restaurarSesion()
                     if let remote = try? await SupabaseService.shared.fetchApariencia(),
                        AparienciaMode(rawValue: remote) != nil {
                         aparienciaRaw = remote
                     }
+                    // Primero subir pendientes locales, luego bajar lo que falta de Supabase.
                     await SyncService.shared.sincronizarPendientes(context: modelContext)
+                    await SyncService.shared.pullDesdeSupabase(context: modelContext)
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
                     withAnimation(.easeInOut(duration: 0.3)) { showMain = true }

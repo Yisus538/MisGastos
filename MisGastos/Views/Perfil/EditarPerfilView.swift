@@ -2,16 +2,17 @@ import SwiftUI
 import PhotosUI
 
 struct EditarPerfilView: View {
-    @AppStorage("usuarioNombre") private var nombre: String = ""
-    @AppStorage("usuarioEmail")  private var email:  String = ""
-    @AppStorage("avatarData")    private var avatarData: Data = Data()
     @Environment(\.dismiss) private var dismiss
 
-    @State private var nombreEdit = ""
-    @State private var emailEdit  = ""
-    @State private var photoItem: PhotosPickerItem?
-    @State private var isSaving = false
-    @State private var isLoading = false
+    // ── CORRECCIÓN: @State para que SwiftUI observe el store y propague cambios ──
+    @State private var store = UserScopedStorage.shared
+
+    @State private var nombreEdit     = ""
+    @State private var emailEdit      = ""
+    @State private var photoItem:     PhotosPickerItem?
+    @State private var isSaving       = false
+    @State private var isLoading      = false
+    @State private var avatarDataLocal: Data = Data()
 
     private var initials: String {
         let parts = nombreEdit.split(separator: " ")
@@ -94,8 +95,11 @@ struct EditarPerfilView: View {
             }
         }
         .task {
-            nombreEdit = nombre
-            emailEdit  = email
+            // Carga datos actuales con scope de usuario
+            nombreEdit      = store.nombre
+            emailEdit       = store.email
+            avatarDataLocal = store.avatarData
+
             isLoading = true
             if let perfil = try? await SupabaseService.shared.fetchPerfil(),
                !perfil.nombre.isEmpty {
@@ -112,7 +116,7 @@ struct EditarPerfilView: View {
 
     @ViewBuilder
     private var avatarCircle: some View {
-        if !avatarData.isEmpty, let uiImg = UIImage(data: avatarData) {
+        if !avatarDataLocal.isEmpty, let uiImg = UIImage(data: avatarDataLocal) {
             Image(uiImage: uiImg)
                 .resizable()
                 .scaledToFill()
@@ -142,13 +146,20 @@ struct EditarPerfilView: View {
               let data = try? await item.loadTransferable(type: Data.self),
               let original = UIImage(data: data),
               let compressed = comprimirAvatar(original) else { return }
-        await MainActor.run { avatarData = compressed }
+        await MainActor.run { avatarDataLocal = compressed }
     }
 
     private func guardar() {
         let nombreFinal = nombreEdit.trimmingCharacters(in: .whitespaces)
         guard !nombreFinal.isEmpty else { return }
-        nombre = nombreFinal
+
+        // ── CORRECCIÓN: store.set() actualiza UserDefaults + notifica observers ──
+        // PerfilView y HomeView se re-renderizan automáticamente al volver.
+        store.set(nombreFinal, for: "usuarioNombre")
+        if !avatarDataLocal.isEmpty {
+            store.set(avatarDataLocal, for: "avatarData")
+        }
+
         isSaving = true
         Task {
             try? await SupabaseService.shared.guardarPerfil(nombre: nombreFinal)
@@ -157,7 +168,6 @@ struct EditarPerfilView: View {
         }
     }
 
-    // Redimensiona a 300×300 px máx y comprime a JPEG 0.75 (~50–120 KB)
     private func comprimirAvatar(_ image: UIImage) -> Data? {
         let maxDim: CGFloat = 300
         let scale = min(maxDim / image.size.width, maxDim / image.size.height, 1)

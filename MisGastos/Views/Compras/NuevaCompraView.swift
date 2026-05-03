@@ -435,6 +435,10 @@ struct NuevaCompraView: View {
         defer { isGuardando = false }
 
         let compra = Compra(fecha: fecha, supermercado: supermercado, total: total, metodoPago: metodoPago)
+        // Corrección: SupabaseService.currentUserID puede ser nil en el init si la sesión
+        // aún no cargó en memoria. Acá sí somos @MainActor y SessionStore ya tiene el valor.
+        let uid = SessionStore.shared.currentUserID
+        if !uid.isEmpty { compra.userId = uid }
 
         // Intentar subir ticket a Supabase Storage; si falla, guardar localmente
         if let data = ticketData {
@@ -452,6 +456,9 @@ struct NuevaCompraView: View {
             producto.compra = compra
             modelContext.insert(producto)
         }
+
+        // Guardar a disco antes del sync para no perder datos si hay error de red.
+        try? modelContext.save()
 
         // Intenta sync inmediato; si falla, isSynced queda false y
         // SyncService.sincronizarPendientes() reintentará en el próximo arranque.

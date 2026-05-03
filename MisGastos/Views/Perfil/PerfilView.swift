@@ -2,15 +2,31 @@ import SwiftUI
 import SwiftData
 
 struct PerfilView: View {
-    @AppStorage("usuarioNombre") private var nombre: String = ""
-    @AppStorage("usuarioEmail")  private var email:  String = ""
-    @AppStorage("avatarData")    private var avatarData: Data = Data()
+    @Environment(\.modelContext) private var modelContext
     @Query private var compras: [Compra]
-    @State private var showSettings = false
-    @State private var showEditar = false
 
-    private var totalGastado: Double { compras.reduce(0) { $0 + $1.total } }
-    private var supermercadosDistintos: Int { Set(compras.map { $0.supermercado }).count }
+    @State private var showSettings = false
+    @State private var showEditar   = false
+
+    // ── CORRECCIÓN: @State para que SwiftUI observe los cambios del store ──
+    @State private var store = UserScopedStorage.shared
+
+    // Datos del usuario — reactivos gracias a @Observable en UserScopedStorage
+    private var nombre:     String { store.nombre }
+    private var email:      String { store.email }
+    private var avatarData: Data   { store.avatarData }
+
+    init() {
+        let uid = SessionStore.shared.currentUserID
+        _compras = Query(
+            filter: #Predicate<Compra> { compra in compra.userId == uid },
+            sort: \Compra.fecha,
+            order: .reverse
+        )
+    }
+
+    private var totalGastado:          Double { compras.reduce(0) { $0 + $1.total } }
+    private var supermercadosDistintos: Int   { Set(compras.map { $0.supermercado }).count }
 
     private var initials: String {
         let parts = nombre.split(separator: " ")
@@ -32,7 +48,7 @@ struct PerfilView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    // Green gradient header — starts at y=0 (behind status bar)
+                    // Green gradient header
                     ZStack(alignment: .topTrailing) {
                         LinearGradient.saGreen
 
@@ -91,11 +107,11 @@ struct PerfilView: View {
                                 }
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(nombre.isEmpty ? "María López" : nombre)
+                                    Text(nombre.isEmpty ? "Usuario" : nombre)
                                         .font(.system(size: 22, weight: .bold))
                                         .foregroundStyle(.white)
                                         .tracking(-0.6)
-                                    Text(email.isEmpty ? "maria.lopez@gmail.com" : email)
+                                    Text(email.isEmpty ? "" : email)
                                         .font(.system(size: 14))
                                         .foregroundStyle(.white.opacity(0.9))
 
@@ -118,7 +134,7 @@ struct PerfilView: View {
                         .padding(.horizontal, 20)
                     }
 
-                    // Stats overlay card (negative top margin effect)
+                    // Stats overlay card
                     SACard(padding: 0) {
                         HStack(spacing: 0) {
                             statCell(value: "\(compras.count)", label: "COMPRAS", green: false)
@@ -131,9 +147,8 @@ struct PerfilView: View {
                     .padding(.horizontal, 20)
                     .offset(y: -40)
 
-                    // Main content (adjusted for the -40 offset)
+                    // Main content
                     VStack(spacing: 0) {
-                        // Cuenta section
                         sectionLabel("Cuenta")
 
                         SACard(padding: 0) {
@@ -144,7 +159,6 @@ struct PerfilView: View {
                             menuRow(icon: "storefront.fill", iconBg: Color(hex: "#F97316"), title: "Tiendas favoritas", isLast: true) {}
                         }
 
-                        // Objetivos section
                         sectionLabel("Objetivos").padding(.top, 22)
 
                         SACard {
@@ -167,7 +181,7 @@ struct PerfilView: View {
                                         .foregroundStyle(Color.saLabel3)
                                 }
                                 Spacer()
-                                Text("\(Int(min(totalGastado/500000 * 100, 100)))%")
+                                Text("\(Int(min(totalGastado / 500000 * 100, 100)))%")
                                     .font(.system(size: 15, weight: .bold))
                                     .foregroundStyle(Color.saGreen)
                             }
@@ -185,7 +199,6 @@ struct PerfilView: View {
                             .padding(.top, 12)
                         }
 
-                        // Más section
                         sectionLabel("Más").padding(.top, 22)
 
                         SACard(padding: 0) {
@@ -197,8 +210,6 @@ struct PerfilView: View {
 
                         // Logout
                         Button {
-                            // Supabase dispara .signedOut → SessionStore.isAuthenticated = false
-                            // → SplashView re-renderiza a LoginView automáticamente.
                             Task { try? await SupabaseService.shared.logout() }
                         } label: {
                             Text("Cerrar sesión")
@@ -223,8 +234,13 @@ struct PerfilView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showSettings) { SettingsView() }
-        .sheet(isPresented: $showEditar) { EditarPerfilView() }
+        // ── CORRECCIÓN: recargar datos al volver de EditarPerfilView ──
+        .sheet(isPresented: $showEditar) {
+            EditarPerfilView()
+        }
     }
+
+    // MARK: - Helpers
 
     @ViewBuilder
     private func statCell(value: String, label: String, green: Bool, small: Bool = false) -> some View {

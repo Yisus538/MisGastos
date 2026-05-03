@@ -3,11 +3,20 @@ import SwiftData
 import Charts
 
 struct EstadisticasView: View {
-    @Query(sort: \Compra.fecha, order: .reverse) private var compras: [Compra]
+    @Query private var compras: [Compra]
     @State private var rango = "6m"
     @State private var chartType = "bar"
 
     private let cal = Calendar.current
+
+    init() {
+        let uid = SessionStore.shared.currentUserID
+        _compras = Query(
+            filter: #Predicate<Compra> { compra in compra.userId == uid },
+            sort: \Compra.fecha,
+            order: .reverse
+        )
+    }
 
     private var comprasRango: [Compra] {
         let meses: Int

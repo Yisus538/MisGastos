@@ -171,6 +171,26 @@ final class SupabaseService {
 
     // MARK: - Productos
 
+    func fetchProductos(compraIDs: [UUID]) async throws -> [ProductoDTO] {
+        guard !compraIDs.isEmpty else { return [] }
+        let remotos: [ProductoRemoto] = try await client
+            .from("productos")
+            .select()
+            .in("compra_id", values: compraIDs.map { $0.uuidString })
+            .execute()
+            .value
+        return remotos.map {
+            ProductoDTO(
+                id: $0.id,
+                compraId: $0.compraId,
+                nombre: $0.nombre,
+                descripcion: $0.descripcion,
+                codigo: $0.codigo,
+                precio: $0.precio
+            )
+        }
+    }
+
     func crearProducto(id: UUID, compraID: UUID, nombre: String, descripcion: String, codigo: String, precio: Double) async throws {
         let remoto = ProductoRemoto(
             id: id,
@@ -287,7 +307,7 @@ final class SupabaseService {
     }
 }
 
-// MARK: - DTO público
+// MARK: - DTOs públicos
 
 struct CompraDTO {
     let id: UUID
@@ -296,6 +316,15 @@ struct CompraDTO {
     let total: Double
     let metodoPago: String
     let ticketURL: String?
+}
+
+struct ProductoDTO {
+    let id: UUID
+    let compraId: UUID
+    let nombre: String
+    let descripcion: String
+    let codigo: String
+    let precio: Double
 }
 
 // MARK: - Errores

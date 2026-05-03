@@ -2,17 +2,31 @@ import SwiftUI
 import UserNotifications
 
 struct SettingsView: View {
-    @AppStorage("aparienciaMode")  private var aparienciaRaw: String = "sistema"
-    @State private var notificaciones  = false
-    @State private var showApariencia  = false
-    @AppStorage("presupuestoActivo")  private var presupuestoActivo: Bool   = false
-    @AppStorage("presupuestoMensual") private var presupuesto:       Double = 0
-    @AppStorage("ocrAutomatico")      private var ocrAutomatico:     Bool   = true
+    // aparienciaMode y ocrAutomatico son preferencias globales (sin scope de usuario),
+    // consistente con AparienciaSheet y NuevaCompraView que también usan @AppStorage sin scope.
+    @AppStorage("aparienciaMode") private var aparienciaRaw: String = "sistema"
+    @AppStorage("ocrAutomatico")  private var ocrAutomatico: Bool   = true
+
+    @State private var notificaciones = false
+    @State private var showApariencia = false
     @State private var presupuestoStr = ""
     @Environment(\.dismiss) private var dismiss
 
+    // ── CORRECCIÓN: presupuesto con scope de usuario via UserScopedStorage ──
+    // Antes: @AppStorage("presupuestoActivo") → clave sin scope → HomeView no la leía
+    // Ahora: store.presupuestoActivo / store.presupuestoMensual → misma clave que HomeView
+    @State private var store = UserScopedStorage.shared
+
     private var aparienciaLabel: String {
         (AparienciaMode(rawValue: aparienciaRaw) ?? .sistema).label
+    }
+
+    // Bindings para los toggles que escriben en UserScopedStorage
+    private var presupuestoActivoBinding: Binding<Bool> {
+        Binding(
+            get: { store.presupuestoActivo },
+            set: { store.set($0, for: "presupuestoActivo") }
+        )
     }
 
     var body: some View {
@@ -82,14 +96,15 @@ struct SettingsView: View {
                                 binding: $ocrAutomatico,
                                 isLast: false
                             )
+                            // ── CORRECCIÓN: binding al store con scope de usuario ──
                             toggleRow(
                                 icon: "banknote",
                                 iconBg: Color.saGreen,
                                 title: "Presupuesto mensual",
-                                binding: $presupuestoActivo,
-                                isLast: !presupuestoActivo
+                                binding: presupuestoActivoBinding,
+                                isLast: !store.presupuestoActivo
                             )
-                            if presupuestoActivo {
+                            if store.presupuestoActivo {
                                 HStack(spacing: 14) {
                                     ZStack {
                                         RoundedRectangle(cornerRadius: 8).fill(Color.saGreen)
@@ -106,12 +121,13 @@ struct SettingsView: View {
                                             let clean = v.filter { $0.isNumber || $0 == "." || $0 == "," }
                                             presupuestoStr = clean
                                             if let val = Double(clean.replacingOccurrences(of: ",", with: ".")) {
-                                                presupuesto = val
+                                                // ── CORRECCIÓN: guardar con scope de usuario ──
+                                                store.set(val, for: "presupuestoMensual")
                                             }
                                         }
                                     Spacer()
-                                    if presupuesto > 0 {
-                                        Text(presupuesto.formatted(.currency(code: "ARS")))
+                                    if store.presupuestoMensual > 0 {
+                                        Text(store.presupuestoMensual.formatted(.currency(code: "ARS")))
                                             .font(.system(size: 13))
                                             .foregroundStyle(Color.saLabel3)
                                             .lineLimit(1)
@@ -171,14 +187,18 @@ struct SettingsView: View {
             }
         }
         .onAppear {
-            if presupuesto > 0 {
-                presupuestoStr = presupuesto.truncatingRemainder(dividingBy: 1) == 0
-                    ? String(Int(presupuesto))
-                    : String(format: "%.2f", presupuesto)
+            // Precargar el texto del campo de presupuesto
+            let val = store.presupuestoMensual
+            if val > 0 {
+                presupuestoStr = val.truncatingRemainder(dividingBy: 1) == 0
+                    ? String(Int(val))
+                    : String(format: "%.2f", val)
             }
         }
         .sheet(isPresented: $showApariencia) { AparienciaSheet() }
     }
+
+    // MARK: - Row builders
 
     @ViewBuilder
     private func sectionLabel(_ text: String) -> some View {
@@ -285,6 +305,8 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 }
+
+// MARK: - NotificationService
 
 final class NotificationService {
     static let shared = NotificationService()

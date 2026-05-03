@@ -2,8 +2,17 @@ import SwiftUI
 import SwiftData
 
 struct ComparativaView: View {
-    @Query(sort: \Compra.fecha, order: .reverse) private var compras: [Compra]
+    @Query private var compras: [Compra]
     @State private var busqueda = ""
+
+    init() {
+        let uid = SessionStore.shared.currentUserID
+        _compras = Query(
+            filter: #Predicate<Compra> { compra in compra.userId == uid },
+            sort: \Compra.fecha,
+            order: .reverse
+        )
+    }
 
     // MARK: - Private types
 

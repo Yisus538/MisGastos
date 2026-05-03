@@ -3,15 +3,32 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Compra.fecha, order: .reverse) private var compras: [Compra]
-    @AppStorage("usuarioNombre")       private var nombre: String = "Usuario"
-    @AppStorage("presupuestoActivo")   private var presupuestoActivo: Bool = false
-    @AppStorage("presupuestoMensual")  private var presupuesto: Double = 0
-    @AppStorage("presupuestoAlertaMes") private var presupuestoAlertaMes: String = ""
+    @Query private var compras: [Compra]
+
+    // ── CORRECCIÓN: @State para que SwiftUI observe los cambios del store ──
+    @State private var store = UserScopedStorage.shared
+
+    // Datos con scope de usuario — ahora reactivos gracias a @Observable
+    private var nombre: String          { store.nombre.isEmpty ? "Usuario" : store.nombre }
+    private var presupuestoActivo: Bool { store.presupuestoActivo }
+    private var presupuesto: Double     { store.presupuestoMensual }
+
     @State private var showNuevaCompra = false
     @State private var showBudgetAlert = false
+    @State private var presupuestoAlertaMes: String = ""
 
     private var cal: Calendar { .current }
+
+    // Filtra por usuario en SwiftData (predicate) para evitar el race condition
+    // de comparar userId en un computed property con @Observable.
+    init() {
+        let uid = SessionStore.shared.currentUserID
+        _compras = Query(
+            filter: #Predicate<Compra> { compra in compra.userId == uid },
+            sort: \Compra.fecha,
+            order: .reverse
+        )
+    }
 
     private var comprasEsteMes: [Compra] {
         compras.filter {
@@ -26,7 +43,7 @@ struct HomeView: View {
         }
     }
 
-    private var totalEsteMes: Double { comprasEsteMes.reduce(0) { $0 + $1.total } }
+    private var totalEsteMes: Double     { comprasEsteMes.reduce(0) { $0 + $1.total } }
     private var totalMesAnterior: Double { comprasMesAnterior.reduce(0) { $0 + $1.total } }
     private var delta: Double {
         guard totalMesAnterior > 0 else { return 0 }
@@ -97,6 +114,7 @@ struct HomeView: View {
             Text("Gastaste \(totalEsteMes.formatted(.currency(code: "ARS"))) este mes, superando tu límite de \(presupuesto.formatted(.currency(code: "ARS"))) por \((totalEsteMes - presupuesto).formatted(.currency(code: "ARS"))).")
         }
         .onAppear {
+            presupuestoAlertaMes = store.presupuestoAlertaMes
             verificarPresupuesto()
             writeWidgetData()
         }
@@ -104,6 +122,9 @@ struct HomeView: View {
             verificarPresupuesto()
             writeWidgetData()
         }
+        // ── CORRECCIÓN: recargar widget cuando cambia el presupuesto ──
+        .onChange(of: store.presupuestoActivo)  { _, _ in writeWidgetData() }
+        .onChange(of: store.presupuestoMensual) { _, _ in writeWidgetData() }
     }
 
     // MARK: - Header
@@ -111,14 +132,12 @@ struct HomeView: View {
         ZStack(alignment: .topTrailing) {
             LinearGradient.saGreen
 
-            // decorative blob
             Circle()
                 .fill(Color.white.opacity(0.08))
                 .frame(width: 260, height: 260)
                 .offset(x: 100, y: -80)
 
             VStack(alignment: .leading, spacing: 0) {
-                // Status bar space
                 Color.clear.frame(height: statusBarHeight)
 
                 HStack(alignment: .top) {
@@ -153,7 +172,6 @@ struct HomeView: View {
                     .padding(.top, 4)
 
                 HStack(spacing: 8) {
-                    // Delta badge
                     HStack(spacing: 4) {
                         Image(systemName: delta < 0 ? "arrow.down" : "arrow.up")
                             .font(.system(size: 10, weight: .bold))
@@ -178,11 +196,10 @@ struct HomeView: View {
                 }
                 .padding(.top, 8)
 
-                // Quick stats pills
                 HStack(spacing: 10) {
-                    statPill(label: "Compras", value: "\(comprasEsteMes.count)")
-                    statPill(label: "Promedio", value: promedioEsteMes.formatted(.currency(code: "ARS")))
-                    statPill(label: "Tiendas", value: "\(tiendas)")
+                    statPill(label: "Compras",  value: "\(comprasEsteMes.count)")
+                    statPill(label: "Promedio",  value: promedioEsteMes.formatted(.currency(code: "ARS")))
+                    statPill(label: "Tiendas",   value: "\(tiendas)")
                 }
                 .padding(.top, 24)
                 .padding(.bottom, 32)
@@ -357,6 +374,7 @@ struct HomeView: View {
         let mesKey = Date().formatted(.dateTime.year().month())
         guard presupuestoAlertaMes != mesKey else { return }
         presupuestoAlertaMes = mesKey
+        store.set(mesKey, for: "presupuestoAlertaMes")
         showBudgetAlert = true
     }
 

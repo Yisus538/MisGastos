@@ -22,7 +22,16 @@ enum OrdenHistorial: String, CaseIterable {
 // MARK: - HistorialView
 
 struct HistorialView: View {
-    @Query(sort: \Compra.fecha, order: .reverse) private var todas: [Compra]
+    @Query private var todas: [Compra]
+
+    init() {
+        let uid = SessionStore.shared.currentUserID
+        _todas = Query(
+            filter: #Predicate<Compra> { compra in compra.userId == uid },
+            sort: \Compra.fecha,
+            order: .reverse
+        )
+    }
 
     @State private var busqueda      = ""
     @State private var filtroSuper   = "Todas"
@@ -129,7 +138,6 @@ struct HistorialView: View {
                             .tracking(-1)
                         Spacer()
 
-                        // Filtros button
                         Button { showFiltrosSheet = true } label: {
                             ZStack(alignment: .topTrailing) {
                                 Image(systemName: "line.3.horizontal.decrease.circle")
@@ -162,41 +170,28 @@ struct HistorialView: View {
                     .padding(.top, statusBarHeight + 8)
                     .padding(.horizontal, 20)
 
-                    // Search
                     SAField(placeholder: "Buscar tienda, método...", text: $busqueda, icon: "magnifyingglass")
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
 
-                    // Filtros activos pills
                     if hayFiltrosActivos {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 8) {
                                 if let desde = fechaDesde {
-                                    filtroActivoPill("Desde \(desde.formatted(date: .abbreviated, time: .omitted))") {
-                                        fechaDesde = nil
-                                    }
+                                    filtroActivoPill("Desde \(desde.formatted(date: .abbreviated, time: .omitted))") { fechaDesde = nil }
                                 }
                                 if let hasta = fechaHasta {
-                                    filtroActivoPill("Hasta \(hasta.formatted(date: .abbreviated, time: .omitted))") {
-                                        fechaHasta = nil
-                                    }
+                                    filtroActivoPill("Hasta \(hasta.formatted(date: .abbreviated, time: .omitted))") { fechaHasta = nil }
                                 }
-                                if !montoMin.isEmpty {
-                                    filtroActivoPill("Mín $\(montoMin)") { montoMin = "" }
-                                }
-                                if !montoMax.isEmpty {
-                                    filtroActivoPill("Máx $\(montoMax)") { montoMax = "" }
-                                }
-                                if orden != .fechaReciente {
-                                    filtroActivoPill(orden.rawValue) { orden = .fechaReciente }
-                                }
+                                if !montoMin.isEmpty { filtroActivoPill("Mín $\(montoMin)") { montoMin = "" } }
+                                if !montoMax.isEmpty { filtroActivoPill("Máx $\(montoMax)") { montoMax = "" } }
+                                if orden != .fechaReciente { filtroActivoPill(orden.rawValue) { orden = .fechaReciente } }
                             }
                             .padding(.horizontal, 20)
                             .padding(.top, 10)
                         }
                     }
 
-                    // Store chips
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(supermercados, id: \.self) { s in
@@ -209,9 +204,7 @@ struct HistorialView: View {
                                         .padding(.horizontal, 14)
                                         .frame(height: 34)
                                         .background(
-                                            active
-                                                ? AnyShapeStyle(Color.saGreen)
-                                                : AnyShapeStyle(Color.saCard),
+                                            active ? AnyShapeStyle(Color.saGreen) : AnyShapeStyle(Color.saCard),
                                             in: Capsule()
                                         )
                                         .shadow(color: active ? .clear : .black.opacity(0.04), radius: 2, y: 1)
@@ -224,7 +217,6 @@ struct HistorialView: View {
                         .padding(.bottom, 4)
                     }
 
-                    // Contador resultado
                     if hayFiltrosActivos || filtroSuper != "Todas" || !busqueda.isEmpty {
                         Text("\(filtradas.count) resultado\(filtradas.count == 1 ? "" : "s")")
                             .font(.system(size: 13))
@@ -233,7 +225,6 @@ struct HistorialView: View {
                             .padding(.top, 8)
                     }
 
-                    // Groups
                     VStack(spacing: 20) {
                         if todas.isEmpty {
                             ContentUnavailableView {
@@ -276,14 +267,10 @@ struct HistorialView: View {
         .sheet(isPresented: $showExportSheet) {
             ExportSheet(compras: todas) { url in
                 shareItems = [url]
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-                    showShareSheet = true
-                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { showShareSheet = true }
             }
         }
-        .sheet(isPresented: $showShareSheet) {
-            ActivitySheet(items: shareItems)
-        }
+        .sheet(isPresented: $showShareSheet) { ActivitySheet(items: shareItems) }
     }
 
     // MARK: - Subviews
@@ -291,13 +278,9 @@ struct HistorialView: View {
     @ViewBuilder
     private func filtroActivoPill(_ label: String, onRemove: @escaping () -> Void) -> some View {
         HStack(spacing: 4) {
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.saGreen)
+            Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.saGreen)
             Button(action: onRemove) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Color.saGreen)
+                Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Color.saGreen)
             }
         }
         .padding(.horizontal, 10)
@@ -324,9 +307,7 @@ struct HistorialView: View {
 
             SACard(padding: 0) {
                 ForEach(Array(compras.enumerated()), id: \.element.id) { idx, compra in
-                    NavigationLink {
-                        DetalleCompraView(compra: compra)
-                    } label: {
+                    NavigationLink { DetalleCompraView(compra: compra) } label: {
                         historialRow(compra: compra, isLast: idx == compras.count - 1)
                     }
                     .buttonStyle(.plain)
@@ -339,7 +320,6 @@ struct HistorialView: View {
     private func historialRow(compra: Compra, isLast: Bool) -> some View {
         HStack(spacing: 12) {
             SAStoreAvatar(name: compra.supermercado, size: 40)
-
             VStack(alignment: .leading, spacing: 2) {
                 Text(compra.supermercado)
                     .font(.system(size: 15, weight: .semibold))
@@ -349,9 +329,7 @@ struct HistorialView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(Color.saLabel3)
             }
-
             Spacer()
-
             Text(compra.total.formatted(.currency(code: "ARS")))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Color.saLabel)
@@ -368,7 +346,7 @@ struct HistorialView: View {
     }
 }
 
-// MARK: - FiltrosAvanzadosSheet
+// MARK: - FiltrosAvanzadosSheet (sin cambios)
 
 struct FiltrosAvanzadosSheet: View {
     @Binding var fechaDesde: Date?
@@ -392,38 +370,20 @@ struct FiltrosAvanzadosSheet: View {
             Color.saBg.ignoresSafeArea()
 
             VStack(alignment: .leading, spacing: 0) {
-                // Handle
-                Capsule()
-                    .fill(Color.saSep)
-                    .frame(width: 36, height: 4)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
+                Capsule().fill(Color.saSep).frame(width: 36, height: 4).frame(maxWidth: .infinity).padding(.top, 12).padding(.bottom, 20)
 
-                // Title row
                 HStack {
-                    Text("Filtros avanzados")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.saLabel)
-                        .tracking(-0.5)
+                    Text("Filtros avanzados").font(.system(size: 22, weight: .bold)).foregroundStyle(Color.saLabel).tracking(-0.5)
                     Spacer()
                     Button("Limpiar") {
-                        useDesde = false
-                        useHasta = false
-                        localMin = ""
-                        localMax = ""
-                        localOrden = .fechaReciente
+                        useDesde = false; useHasta = false; localMin = ""; localMax = ""; localOrden = .fechaReciente
                     }
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.saGreen)
+                    .font(.system(size: 15, weight: .medium)).foregroundStyle(Color.saGreen)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                .padding(.horizontal, 20).padding(.bottom, 24)
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-
-                        // Período
                         filtroSeccion(titulo: "Período", icono: "calendar") {
                             VStack(spacing: 0) {
                                 toggleDateRow(label: "Desde", enabled: $useDesde, date: $localDesde)
@@ -431,8 +391,6 @@ struct FiltrosAvanzadosSheet: View {
                                 toggleDateRow(label: "Hasta", enabled: $useHasta, date: $localHasta)
                             }
                         }
-
-                        // Monto
                         filtroSeccion(titulo: "Monto (ARS)", icono: "dollarsign.circle") {
                             VStack(spacing: 0) {
                                 montoRow(label: "Mínimo", placeholder: "0", text: $localMin)
@@ -440,56 +398,35 @@ struct FiltrosAvanzadosSheet: View {
                                 montoRow(label: "Máximo", placeholder: "Sin límite", text: $localMax)
                             }
                         }
-
-                        // Ordenar por
                         filtroSeccion(titulo: "Ordenar por", icono: "arrow.up.arrow.down") {
                             VStack(spacing: 0) {
                                 ForEach(Array(OrdenHistorial.allCases.enumerated()), id: \.element) { idx, op in
                                     let isLast = idx == OrdenHistorial.allCases.count - 1
                                     Button { localOrden = op } label: {
                                         HStack(spacing: 12) {
-                                            Image(systemName: op.icon)
-                                                .font(.system(size: 16))
-                                                .foregroundStyle(localOrden == op ? Color.saGreen : Color.saLabel3)
-                                                .frame(width: 24)
-                                            Text(op.rawValue)
-                                                .font(.system(size: 15, weight: localOrden == op ? .semibold : .regular))
-                                                .foregroundStyle(localOrden == op ? Color.saLabel : Color.saLabel2)
+                                            Image(systemName: op.icon).font(.system(size: 16)).foregroundStyle(localOrden == op ? Color.saGreen : Color.saLabel3).frame(width: 24)
+                                            Text(op.rawValue).font(.system(size: 15, weight: localOrden == op ? .semibold : .regular)).foregroundStyle(localOrden == op ? Color.saLabel : Color.saLabel2)
                                             Spacer()
-                                            if localOrden == op {
-                                                Image(systemName: "checkmark")
-                                                    .font(.system(size: 13, weight: .semibold))
-                                                    .foregroundStyle(Color.saGreen)
-                                            }
+                                            if localOrden == op { Image(systemName: "checkmark").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.saGreen) }
                                         }
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 13)
-                                        .contentShape(Rectangle())
+                                        .padding(.horizontal, 16).padding(.vertical, 13).contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plain)
-
-                                    if !isLast {
-                                        Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 16)
-                                    }
+                                    if !isLast { Rectangle().fill(Color.saSep).frame(height: 0.5).padding(.leading, 16) }
                                 }
                             }
                         }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 16)
+                    .padding(.horizontal, 20).padding(.bottom, 16)
                 }
 
-                // Aplicar
                 SAButton(title: "Aplicar filtros") {
                     fechaDesde = useDesde ? localDesde : nil
                     fechaHasta = useHasta ? localHasta : nil
-                    montoMin   = localMin
-                    montoMax   = localMax
-                    orden      = localOrden
+                    montoMin = localMin; montoMax = localMax; orden = localOrden
                     dismiss()
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 28)
+                .padding(.horizontal, 20).padding(.bottom, 28)
             }
         }
         .presentationDetents([.large])
@@ -498,11 +435,8 @@ struct FiltrosAvanzadosSheet: View {
         .onAppear {
             localDesde = fechaDesde ?? Calendar.current.date(byAdding: .month, value: -1, to: .now)!
             localHasta = fechaHasta ?? .now
-            useDesde   = fechaDesde != nil
-            useHasta   = fechaHasta != nil
-            localMin   = montoMin
-            localMax   = montoMax
-            localOrden = orden
+            useDesde = fechaDesde != nil; useHasta = fechaHasta != nil
+            localMin = montoMin; localMax = montoMax; localOrden = orden
         }
     }
 
@@ -510,19 +444,11 @@ struct FiltrosAvanzadosSheet: View {
     private func filtroSeccion<Content: View>(titulo: String, icono: String, @ViewBuilder content: @escaping () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
-                Image(systemName: icono)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.saGreen)
-                Text(titulo.uppercased())
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.saLabel3)
-                    .tracking(0.4)
+                Image(systemName: icono).font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.saGreen)
+                Text(titulo.uppercased()).font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.saLabel3).tracking(0.4)
             }
             .padding(.horizontal, 4)
-
-            SACard(padding: 0) {
-                content()
-            }
+            SACard(padding: 0) { content() }
         }
     }
 
@@ -530,49 +456,28 @@ struct FiltrosAvanzadosSheet: View {
     private func toggleDateRow(label: String, enabled: Binding<Bool>, date: Binding<Date>) -> some View {
         HStack {
             Toggle(isOn: enabled) {
-                Text(label)
-                    .font(.system(size: 15))
-                    .foregroundStyle(enabled.wrappedValue ? Color.saLabel : Color.saLabel3)
+                Text(label).font(.system(size: 15)).foregroundStyle(enabled.wrappedValue ? Color.saLabel : Color.saLabel3)
             }
-            .toggleStyle(SwitchToggleStyle(tint: Color.saGreen))
-            .frame(maxWidth: 130)
-
+            .toggleStyle(SwitchToggleStyle(tint: Color.saGreen)).frame(maxWidth: 130)
             Spacer()
-
-            if enabled.wrappedValue {
-                DatePicker("", selection: date, displayedComponents: .date)
-                    .labelsHidden()
-                    .tint(Color.saGreen)
-            } else {
-                Text("—")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Color.saLabel4)
-            }
+            if enabled.wrappedValue { DatePicker("", selection: date, displayedComponents: .date).labelsHidden().tint(Color.saGreen) }
+            else { Text("—").font(.system(size: 15)).foregroundStyle(Color.saLabel4) }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16).padding(.vertical, 12)
     }
 
     @ViewBuilder
     private func montoRow(label: String, placeholder: String, text: Binding<String>) -> some View {
         HStack {
-            Text(label)
-                .font(.system(size: 15))
-                .foregroundStyle(Color.saLabel)
+            Text(label).font(.system(size: 15)).foregroundStyle(Color.saLabel)
             Spacer()
-            TextField(placeholder, text: text)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Color.saLabel)
-                .frame(width: 130)
+            TextField(placeholder, text: text).keyboardType(.decimalPad).multilineTextAlignment(.trailing).font(.system(size: 15, weight: .medium)).foregroundStyle(Color.saLabel).frame(width: 130)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(.horizontal, 16).padding(.vertical, 13)
     }
 }
 
-// MARK: - Export Sheet
+// MARK: - ExportSheet (sin cambios)
 
 struct ExportSheet: View {
     let compras: [Compra]
@@ -585,72 +490,47 @@ struct ExportSheet: View {
     var body: some View {
         ZStack {
             Color.saBg.ignoresSafeArea()
-
             VStack(alignment: .leading, spacing: 0) {
-                Capsule()
-                    .fill(Color.saSep)
-                    .frame(width: 36, height: 4)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 12)
-                    .padding(.bottom, 20)
-
+                Capsule().fill(Color.saSep).frame(width: 36, height: 4).frame(maxWidth: .infinity).padding(.top, 12).padding(.bottom, 20)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Exportar historial")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.saLabel)
-                        .tracking(-0.5)
-                    Text("Elegí el formato para exportar tus compras")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.saLabel3)
+                    Text("Exportar historial").font(.system(size: 22, weight: .bold)).foregroundStyle(Color.saLabel).tracking(-0.5)
+                    Text("Elegí el formato para exportar tus compras").font(.system(size: 14)).foregroundStyle(Color.saLabel3)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-
+                .padding(.horizontal, 20).padding(.bottom, 20)
                 SACard(padding: 14) {
                     HStack(spacing: 0) {
                         statCell(icon: "cart.fill", color: Color.saGreen, value: "\(compras.count)", label: "Compras")
                         Rectangle().fill(Color.saSep).frame(width: 0.5, height: 36)
                         statCell(icon: "bag.fill", color: Color(hex: "#F97316"), value: "\(totalProductos)", label: "Productos")
                         Rectangle().fill(Color.saSep).frame(width: 0.5, height: 36)
-                        statCell(icon: "dollarsign.circle.fill", color: Color(hex: "#8B5CF6"),
-                                 value: totalGastado.formatted(.currency(code: "ARS")), label: "Total")
+                        statCell(icon: "dollarsign.circle.fill", color: Color(hex: "#8B5CF6"), value: totalGastado.formatted(.currency(code: "ARS")), label: "Total")
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 16)
-
+                .padding(.horizontal, 20).padding(.bottom, 16)
                 VStack(spacing: 10) {
-                    exportRow(icon: "tablecells.fill", iconColor: Color.saGreen,
-                              title: "Exportar como CSV", subtitle: "Compatible con Excel y Google Sheets") {
+                    exportRow(icon: "tablecells.fill", iconColor: Color.saGreen, title: "Exportar como CSV", subtitle: "Compatible con Excel y Google Sheets") {
                         if let url = ExportService.shared.generarCSV(compras: compras) { dismiss(); onExport(url) }
                     }
-                    exportRow(icon: "doc.richtext.fill", iconColor: Color(hex: "#F97316"),
-                              title: "Exportar como PDF", subtitle: "Documento formateado listo para imprimir") {
+                    exportRow(icon: "doc.richtext.fill", iconColor: Color(hex: "#F97316"), title: "Exportar como PDF", subtitle: "Documento formateado listo para imprimir") {
                         if let url = ExportService.shared.generarPDF(compras: compras) { dismiss(); onExport(url) }
                     }
                 }
                 .padding(.horizontal, 20)
-
                 Spacer()
             }
         }
-        .presentationDetents([.height(370)])
-        .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(28)
+        .presentationDetents([.height(370)]).presentationDragIndicator(.hidden).presentationCornerRadius(28)
     }
 
-    @ViewBuilder
-    private func statCell(icon: String, color: Color, value: String, label: String) -> some View {
+    @ViewBuilder private func statCell(icon: String, color: Color, value: String, label: String) -> some View {
         VStack(spacing: 5) {
             Image(systemName: icon).font(.system(size: 17)).foregroundStyle(color)
             Text(value).font(.system(size: 13, weight: .bold)).foregroundStyle(Color.saLabel).lineLimit(1).minimumScaleFactor(0.6)
             Text(label).font(.system(size: 11)).foregroundStyle(Color.saLabel3)
-        }
-        .frame(maxWidth: .infinity)
+        }.frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder
-    private func exportRow(icon: String, iconColor: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    @ViewBuilder private func exportRow(icon: String, iconColor: Color, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             SACard(padding: 0) {
                 HStack(spacing: 14) {
@@ -664,10 +544,8 @@ struct ExportSheet: View {
                     }
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.saLabel4)
-                }
-                .padding(16)
+                }.padding(16)
             }
-        }
-        .buttonStyle(.plain)
+        }.buttonStyle(.plain)
     }
 }
