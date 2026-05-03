@@ -4,6 +4,7 @@ import SwiftData
 struct ComparativaView: View {
     @Query private var compras: [Compra]
     @State private var busqueda = ""
+    @State private var store = UserScopedStorage.shared
 
     init() {
         let uid = SessionStore.shared.currentUserID
@@ -168,7 +169,7 @@ struct ComparativaView: View {
                 statCell(
                     icon: "tag.fill",
                     color: Color(hex: "#8B5CF6"),
-                    value: (comparativas.map(\.ahorro).max() ?? 0).formatted(.currency(code: "ARS")),
+                    value: store.convert(comparativas.map(\.ahorro).max() ?? 0).formatted(.currency(code: store.currencyCode)),
                     label: "Mayor\nahorro"
                 )
             }
@@ -206,7 +207,7 @@ struct ComparativaView: View {
                         .tracking(-0.3)
                     Spacer()
                     if item.ahorro > 0 {
-                        Text("−" + item.ahorro.formatted(.currency(code: "ARS")))
+                        Text("−" + store.convert(item.ahorro).formatted(.currency(code: store.currencyCode)))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Color.saGreen)
                             .padding(.horizontal, 8)
@@ -251,7 +252,7 @@ struct ComparativaView: View {
                                 .tracking(0.3)
                         }
 
-                        Text(precio.precio.formatted(.currency(code: "ARS")))
+                        Text(store.convert(precio.precio).formatted(.currency(code: store.currencyCode)))
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(
                                 isCheapest ? Color.saGreen
@@ -274,7 +275,7 @@ struct ComparativaView: View {
                         Image(systemName: "lightbulb.fill")
                             .font(.system(size: 12))
                             .foregroundStyle(Color.saGreen)
-                        Text("Comprá en **\(item.superMasBarato)** y ahorrás \(item.ahorro.formatted(.currency(code: "ARS")))")
+                        Text("Comprá en **\(item.superMasBarato)** y ahorrás \(store.convert(item.ahorro).formatted(.currency(code: store.currencyCode)))")
                             .font(.system(size: 12))
                             .foregroundStyle(Color.saLabel3)
                     }

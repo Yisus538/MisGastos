@@ -1,27 +1,39 @@
 import SwiftUI
-import UserNotifications
 
 struct SettingsView: View {
-    // aparienciaMode y ocrAutomatico son preferencias globales (sin scope de usuario),
-    // consistente con AparienciaSheet y NuevaCompraView que también usan @AppStorage sin scope.
     @AppStorage("aparienciaMode") private var aparienciaRaw: String = "sistema"
     @AppStorage("ocrAutomatico")  private var ocrAutomatico: Bool   = true
 
-    @State private var notificaciones = false
-    @State private var showApariencia = false
-    @State private var presupuestoStr = ""
+    @State private var showApariencia   = false
+    @State private var showMoneda       = false
+    @State private var showIdioma       = false
+    @State private var showRestartAlert = false
+    @State private var presupuestoStr   = ""
     @Environment(\.dismiss) private var dismiss
 
-    // ── CORRECCIÓN: presupuesto con scope de usuario via UserScopedStorage ──
-    // Antes: @AppStorage("presupuestoActivo") → clave sin scope → HomeView no la leía
-    // Ahora: store.presupuestoActivo / store.presupuestoMensual → misma clave que HomeView
     @State private var store = UserScopedStorage.shared
+
+    private let monedas: [(code: String, label: String, flag: String)] = [
+        ("ARS", "Peso argentino", "🇦🇷"),
+        ("USD", "Dólar", "🇺🇸"),
+        ("EUR", "Euro", "🇪🇺"),
+        ("BRL", "Real brasileño", "🇧🇷"),
+    ]
+    private let idiomas: [(code: String, label: String, flag: String)] = [
+        ("es", "Español", "🇦🇷"),
+        ("en", "English", "🇺🇸"),
+    ]
 
     private var aparienciaLabel: String {
         (AparienciaMode(rawValue: aparienciaRaw) ?? .sistema).label
     }
+    private var monedaLabel: String {
+        monedas.first { $0.code == store.currencyCode }.map { "\($0.flag) \($0.code)" } ?? "🇦🇷 ARS"
+    }
+    private var idiomaLabel: String {
+        idiomas.first { $0.code == store.languageCode }.map { "\($0.flag) \($0.label)" } ?? "🇦🇷 Español"
+    }
 
-    // Bindings para los toggles que escriben en UserScopedStorage
     private var presupuestoActivoBinding: Binding<Bool> {
         Binding(
             get: { store.presupuestoActivo },
@@ -63,18 +75,14 @@ struct SettingsView: View {
                         // General
                         sectionLabel("General")
                         SACard(padding: 0) {
-                            plainRow(icon: "tag.fill", iconBg: Color.saGreen, title: "Moneda", value: "ARS", isLast: false)
-                            plainRow(icon: "calendar", iconBg: Color(hex: "#0A84FF"), title: "Idioma", value: "Español", isLast: false)
-                            toggleRow(icon: "bell.fill", iconBg: Color(hex: "#FF9500"), title: "Notificaciones", binding: $notificaciones, isLast: true)
-                                .onChange(of: notificaciones) { _, on in
-                                    if on {
-                                        Task {
-                                            let ok = await NotificationService.shared.solicitarPermiso()
-                                            if !ok { notificaciones = false }
-                                            else { NotificationService.shared.programarRecordatorio() }
-                                        }
-                                    }
-                                }
+                            buttonRow(icon: "tag.fill", iconBg: Color.saGreen,
+                                      title: "Moneda", value: monedaLabel, isLast: false) {
+                                showMoneda = true
+                            }
+                            buttonRow(icon: "globe", iconBg: Color(hex: "#0A84FF"),
+                                      title: "Idioma", value: idiomaLabel, isLast: true) {
+                                showIdioma = true
+                            }
                         }
 
                         // Apariencia
@@ -113,7 +121,7 @@ struct SettingsView: View {
                                             .foregroundStyle(.white)
                                     }
                                     .frame(width: 32, height: 32)
-                                    TextField("Límite mensual en ARS", text: $presupuestoStr)
+                                    TextField("Límite mensual en \(store.currencyCode)", text: $presupuestoStr)
                                         .keyboardType(.decimalPad)
                                         .font(.system(size: 16))
                                         .foregroundStyle(Color.saLabel)
@@ -127,7 +135,7 @@ struct SettingsView: View {
                                         }
                                     Spacer()
                                     if store.presupuestoMensual > 0 {
-                                        Text(store.presupuestoMensual.formatted(.currency(code: "ARS")))
+                                        Text(store.presupuestoMensual.formatted(.currency(code: store.currencyCode)))
                                             .font(.system(size: 13))
                                             .foregroundStyle(Color.saLabel3)
                                             .lineLimit(1)
@@ -187,7 +195,6 @@ struct SettingsView: View {
             }
         }
         .onAppear {
-            // Precargar el texto del campo de presupuesto
             let val = store.presupuestoMensual
             if val > 0 {
                 presupuestoStr = val.truncatingRemainder(dividingBy: 1) == 0
@@ -196,6 +203,28 @@ struct SettingsView: View {
             }
         }
         .sheet(isPresented: $showApariencia) { AparienciaSheet() }
+        .confirmationDialog("Seleccioná la moneda", isPresented: $showMoneda, titleVisibility: .visible) {
+            ForEach(monedas, id: \.code) { m in
+                Button("\(m.flag) \(m.label) (\(m.code))") {
+                    store.setCurrencyCode(m.code)
+                }
+            }
+            Button("Cancelar", role: .cancel) {}
+        }
+        .confirmationDialog("Seleccioná el idioma", isPresented: $showIdioma, titleVisibility: .visible) {
+            ForEach(idiomas, id: \.code) { i in
+                Button("\(i.flag) \(i.label)") {
+                    store.setLanguageCode(i.code)
+                    showRestartAlert = true
+                }
+            }
+            Button("Cancelar", role: .cancel) {}
+        }
+        .alert("Idioma actualizado", isPresented: $showRestartAlert) {
+            Button("Entendido") {}
+        } message: {
+            Text("Cerrá y volvé a abrir la app para aplicar el nuevo idioma.")
+        }
     }
 
     // MARK: - Row builders

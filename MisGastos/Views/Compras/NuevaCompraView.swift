@@ -23,6 +23,7 @@ struct NuevaCompraView: View {
     @State private var ocrDetected: Int?
     @State private var editarProducto: ProductoDraft?
     @AppStorage("ocrAutomatico") private var ocrAutomatico: Bool = true
+    @State private var store = UserScopedStorage.shared
 
     private var total: Double { productos.reduce(0) { $0 + $1.precio } }
     private var canSave: Bool { !productos.isEmpty && !isScanning && !isGuardando }
@@ -159,7 +160,7 @@ struct NuevaCompraView: View {
                     .contentTransition(.numericText())
                     .animation(.spring(duration: 0.3), value: total)
             }
-            Text("Pesos argentinos")
+            Text(store.currencyName)
                 .font(.system(size: 13))
                 .foregroundStyle(Color.saLabel3)
         }
@@ -214,7 +215,7 @@ struct NuevaCompraView: View {
                             .font(.system(size: 13))
                             .foregroundStyle(Color.saLabel3)
                         Spacer()
-                        Text(total.formatted(.currency(code: "ARS")))
+                        Text(store.convert(total).formatted(.currency(code: store.currencyCode)))
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(Color.saGreen)
                     }
@@ -277,7 +278,7 @@ struct NuevaCompraView: View {
 
                 Spacer()
 
-                Text(prod.precio.formatted(.currency(code: "ARS")))
+                Text(store.convert(prod.precio).formatted(.currency(code: store.currencyCode)))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.saLabel)
 

@@ -6,6 +6,7 @@ struct EstadisticasView: View {
     @Query private var compras: [Compra]
     @State private var rango = "6m"
     @State private var chartType = "bar"
+    @State private var store = UserScopedStorage.shared
 
     private let cal = Calendar.current
 
@@ -140,7 +141,7 @@ struct EstadisticasView: View {
                                     Text("Tendencia mensual")
                                         .font(.system(size: 13))
                                         .foregroundStyle(Color.saLabel3)
-                                    Text(totalEsteMes.formatted(.currency(code: "ARS")))
+                                    Text(store.convert(totalEsteMes).formatted(.currency(code: store.currencyCode)))
                                         .font(.system(size: 26, weight: .bold))
                                         .foregroundStyle(Color.saLabel)
                                         .tracking(-0.8)
@@ -218,7 +219,7 @@ struct EstadisticasView: View {
                                         Text(delta < 0 ? "Gastaste menos" : "Gastaste más")
                                             .font(.system(size: 14))
                                             .foregroundStyle(Color.saLabel3)
-                                        Text((diff >= 0 ? "+" : "") + diff.formatted(.currency(code: "ARS")))
+                                        Text((diff >= 0 ? "+" : "") + store.convert(diff).formatted(.currency(code: store.currencyCode)))
                                             .font(.system(size: 24, weight: .bold))
                                             .foregroundStyle(delta < 0 ? Color.saGreen : Color.saDanger)
                                             .tracking(-0.6)
@@ -249,8 +250,8 @@ struct EstadisticasView: View {
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                                 insightCard(icon: "receipt", label: "Compras", value: "\(comprasEsteMes.count)", bg: Color(hex: "#3B82F6"))
                                 insightCard(icon: "storefront", label: "Tiendas", value: "\(Set(comprasEsteMes.map { $0.supermercado }).count)", bg: Color(hex: "#F97316"))
-                                insightCard(icon: "tag.fill", label: "Ticket promedio", value: ticketPromedio.formatted(.currency(code: "ARS")), bg: Color.saGreen, small: true)
-                                insightCard(icon: "bookmark.fill", label: "Mayor compra", value: mayorCompra.formatted(.currency(code: "ARS")), bg: Color(hex: "#A855F7"), small: true)
+                                insightCard(icon: "tag.fill", label: "Ticket promedio", value: store.convert(ticketPromedio).formatted(.currency(code: store.currencyCode)), bg: Color.saGreen, small: true)
+                                insightCard(icon: "bookmark.fill", label: "Mayor compra", value: store.convert(mayorCompra).formatted(.currency(code: store.currencyCode)), bg: Color(hex: "#A855F7"), small: true)
                             }
                         }
                         // Distribución por tienda — SectorMark (donut)
@@ -336,7 +337,7 @@ struct EstadisticasView: View {
                 }
             }
             .frame(height: 10)
-            Text(value.formatted(.currency(code: "ARS")))
+            Text(store.convert(value).formatted(.currency(code: store.currencyCode)))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Color.saLabel)
                 .tracking(-0.3)

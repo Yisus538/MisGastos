@@ -12,17 +12,18 @@ struct GastosMesIntent: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
-        let ud = UserDefaults(suiteName: "group.com.undef.superahorro")
-        let total  = ud?.double(forKey: "widget_totalMes")      ?? 0
-        let mes    = ud?.string(forKey: "widget_nombreMes")      ?? Date().formatted(.dateTime.month(.wide)).capitalized
-        let count  = ud?.integer(forKey: "widget_cantidadCompras") ?? 0
+        let ud           = UserDefaults(suiteName: "group.com.undef.superahorro")
+        let total        = ud?.double(forKey: "widget_totalMes")        ?? 0
+        let mes          = ud?.string(forKey: "widget_nombreMes")        ?? Date().formatted(.dateTime.month(.wide)).capitalized
+        let count        = ud?.integer(forKey: "widget_cantidadCompras") ?? 0
+        let currencyCode = UserDefaults.standard.string(forKey: "app_currencyCode") ?? "ARS"
 
-        let totalStr   = total.formatted(.currency(code: "ARS"))
+        let totalStr   = total.formatted(.currency(code: currencyCode))
         let comprasStr = "\(count) compra\(count == 1 ? "" : "s")"
         let dialog     = IntentDialog(stringLiteral: "Este mes gastaste \(totalStr) en \(comprasStr). (\(mes))")
 
         return .result(dialog: dialog) {
-            GastosMesSnippet(total: total, mes: mes, cantidad: count)
+            GastosMesSnippet(total: total, mes: mes, cantidad: count, currencyCode: currencyCode)
         }
     }
 }
@@ -35,6 +36,7 @@ struct GastosMesSnippet: View {
     let total: Double
     let mes: String
     let cantidad: Int
+    var currencyCode: String = "ARS"
 
     var body: some View {
         HStack(spacing: 14) {
@@ -57,7 +59,7 @@ struct GastosMesSnippet: View {
                 Text(mes.capitalized)
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
-                Text(total.formatted(.currency(code: "ARS")))
+                Text(total.formatted(.currency(code: currencyCode)))
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(.primary)
                     .minimumScaleFactor(0.6)

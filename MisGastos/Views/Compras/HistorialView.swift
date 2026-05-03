@@ -23,6 +23,7 @@ enum OrdenHistorial: String, CaseIterable {
 
 struct HistorialView: View {
     @Query private var todas: [Compra]
+    @State private var store = UserScopedStorage.shared
 
     init() {
         let uid = SessionStore.shared.currentUserID
@@ -298,7 +299,7 @@ struct HistorialView: View {
                     .foregroundStyle(Color.saLabel3)
                     .tracking(0.2)
                 Spacer()
-                Text(total.formatted(.currency(code: "ARS")))
+                Text(store.convert(total).formatted(.currency(code: store.currencyCode)))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.saLabel3)
             }
@@ -330,7 +331,7 @@ struct HistorialView: View {
                     .foregroundStyle(Color.saLabel3)
             }
             Spacer()
-            Text(compra.total.formatted(.currency(code: "ARS")))
+            Text(store.convert(compra.total).formatted(.currency(code: store.currencyCode)))
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Color.saLabel)
                 .tracking(-0.3)
@@ -483,6 +484,7 @@ struct ExportSheet: View {
     let compras: [Compra]
     let onExport: (URL) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var store = UserScopedStorage.shared
 
     private var totalProductos: Int { compras.reduce(0) { $0 + $1.productos.count } }
     private var totalGastado: Double { compras.reduce(0) { $0 + $1.total } }
@@ -503,7 +505,7 @@ struct ExportSheet: View {
                         Rectangle().fill(Color.saSep).frame(width: 0.5, height: 36)
                         statCell(icon: "bag.fill", color: Color(hex: "#F97316"), value: "\(totalProductos)", label: "Productos")
                         Rectangle().fill(Color.saSep).frame(width: 0.5, height: 36)
-                        statCell(icon: "dollarsign.circle.fill", color: Color(hex: "#8B5CF6"), value: totalGastado.formatted(.currency(code: "ARS")), label: "Total")
+                        statCell(icon: "dollarsign.circle.fill", color: Color(hex: "#8B5CF6"), value: store.convert(totalGastado).formatted(.currency(code: store.currencyCode)), label: "Total")
                     }
                 }
                 .padding(.horizontal, 20).padding(.bottom, 16)

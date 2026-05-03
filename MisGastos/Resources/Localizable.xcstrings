@@ -38,12 +38,42 @@
         }
       }
     },
+    "%@ %@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "%@ %@ (%@)" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ (%3$@)"
+          }
+        }
+      }
+    },
     "%@ de %@" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ de %2$@"
+          }
+        }
+      }
+    },
+    "%lld compra%@" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld compra%2$@"
           }
         }
       }
@@ -229,6 +259,9 @@
     "Cerca del límite" : {
 
     },
+    "Cerrá y volvé a abrir la app para aplicar el nuevo idioma." : {
+
+    },
     "Cerrar sesión" : {
 
     },
@@ -354,6 +387,12 @@
       }
     },
     "Compras recientes" : {
+
+    },
+    "Consulta cuánto gastaste este mes en el supermercado." : {
+
+    },
+    "Consultas" : {
 
     },
     "Creá tu cuenta" : {
@@ -518,6 +557,9 @@
     "Gasto" : {
 
     },
+    "Gasto del mes" : {
+
+    },
     "Gasto mensual" : {
 
     },
@@ -672,6 +714,9 @@
         }
       }
     },
+    "Idioma actualizado" : {
+
+    },
     "Ingresá tu correo y te enviamos instrucciones para recuperar tu cuenta." : {
 
     },
@@ -687,7 +732,7 @@
     "Inicio" : {
 
     },
-    "Límite mensual en ARS" : {
+    "Límite mensual en %@" : {
 
     },
     "Límite superado" : {
@@ -1131,6 +1176,12 @@
           }
         }
       }
+    },
+    "Seleccioná el idioma" : {
+
+    },
+    "Seleccioná la moneda" : {
+
     },
     "settings.acerca" : {
       "extractionState" : "stale",

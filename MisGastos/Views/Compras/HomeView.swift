@@ -111,7 +111,7 @@ struct HomeView: View {
         .alert("Presupuesto superado", isPresented: $showBudgetAlert) {
             Button("Entendido", role: .cancel) {}
         } message: {
-            Text("Gastaste \(totalEsteMes.formatted(.currency(code: "ARS"))) este mes, superando tu límite de \(presupuesto.formatted(.currency(code: "ARS"))) por \((totalEsteMes - presupuesto).formatted(.currency(code: "ARS"))).")
+            Text("Gastaste \(store.convert(totalEsteMes).formatted(.currency(code: store.currencyCode))) este mes, superando tu límite de \(store.convert(presupuesto).formatted(.currency(code: store.currencyCode))) por \(store.convert(totalEsteMes - presupuesto).formatted(.currency(code: store.currencyCode))).")
         }
         .onAppear {
             presupuestoAlertaMes = store.presupuestoAlertaMes
@@ -165,7 +165,7 @@ struct HomeView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(.white.opacity(0.85))
 
-                Text(totalEsteMes.formatted(.currency(code: "ARS")))
+                Text(store.convert(totalEsteMes).formatted(.currency(code: store.currencyCode)))
                     .font(.system(size: 42, weight: .bold))
                     .foregroundStyle(.white)
                     .tracking(-1.5)
@@ -198,7 +198,7 @@ struct HomeView: View {
 
                 HStack(spacing: 10) {
                     statPill(label: "Compras",  value: "\(comprasEsteMes.count)")
-                    statPill(label: "Promedio",  value: promedioEsteMes.formatted(.currency(code: "ARS")))
+                    statPill(label: "Promedio",  value: store.convert(promedioEsteMes).formatted(.currency(code: store.currencyCode)))
                     statPill(label: "Tiendas",   value: "\(tiendas)")
                 }
                 .padding(.top, 24)
@@ -287,7 +287,7 @@ struct HomeView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(compra.total.formatted(.currency(code: "ARS")))
+                Text(store.convert(compra.total).formatted(.currency(code: store.currencyCode)))
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(Color.saLabel)
                     .tracking(-0.3)
@@ -348,10 +348,10 @@ struct HomeView: View {
                 .frame(height: 8)
 
                 HStack {
-                    Text(totalEsteMes.formatted(.currency(code: "ARS")))
+                    Text(store.convert(totalEsteMes).formatted(.currency(code: store.currencyCode)))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(barColor)
-                    Text("/ \(presupuesto.formatted(.currency(code: "ARS")))")
+                    Text("/ \(store.convert(presupuesto).formatted(.currency(code: store.currencyCode)))")
                         .font(.system(size: 13))
                         .foregroundStyle(Color.saLabel3)
                     Spacer()

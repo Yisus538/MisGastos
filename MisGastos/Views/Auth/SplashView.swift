@@ -77,6 +77,7 @@ struct SplashView: View {
                 }
                 dotAnimating = true
                 Task {
+                    UserScopedStorage.shared.refreshExchangeRates()
                     // Restaurar sesión desde Keychain antes de cualquier operación.
                     await SupabaseService.shared.restaurarSesion()
                     if let remote = try? await SupabaseService.shared.fetchApariencia(),

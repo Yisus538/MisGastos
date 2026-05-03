@@ -1,6 +1,6 @@
 # CLAUDE.md — Súper Ahorro iOS
 > Fuente de verdad del proyecto. Actualizá este archivo al final de cada ciclo de implementación.
-> Última actualización: 2026-05-03 (ciclo: Widget WidgetKit — small + medium + lock screen; Notion sincronizado)
+> Última actualización: 2026-05-03 (ciclo: Conversión de moneda real — CurrencyService + exchangeRate en UserScopedStorage)
 
 ---
 
@@ -247,6 +247,12 @@ struct ProductoDraft: Identifiable, Equatable {
 - Singleton: `SyncService.shared` (`@MainActor`)
 - `sincronizarPendientes(context: ModelContext) async` — busca `Compra` con `isSynced == false`, las sincroniza a Supabase y marca `isSynced = true`. Llamado en `SplashView.onAppear` antes del routing.
 - Seguro llamar en cada arranque: si no hay sesión activa retorna inmediatamente.
+
+### `CurrencyService` — `Services/CurrencyService.swift`
+- Singleton: `CurrencyService.shared`
+- `fetchRates() async -> [String: Double]` — obtiene tasas desde `open.er-api.com/v6/latest/ARS` (gratis, sin API key). Base: 1 ARS = X moneda. Fallback a tasas hardcodeadas + caché en UserDefaults (`cachedCurrencyRates`)
+- Tasas de fallback (aprox. 2025): USD 0.00091, EUR 0.00083, BRL 0.0046
+- Llamado desde `UserScopedStorage.setCurrencyCode()` y `refreshExchangeRates()`, que se invoca en `SplashView.onAppear`
 
 ### `AparienciaMode` — `Views/Perfil/AparienciaSheet.swift`
 - Enum `String` con casos `.claro`, `.oscuro`, `.sistema`

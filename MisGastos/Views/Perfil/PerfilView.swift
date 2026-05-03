@@ -139,9 +139,9 @@ struct PerfilView: View {
                         HStack(spacing: 0) {
                             statCell(value: "\(compras.count)", label: "COMPRAS", green: false)
                             Divider().frame(height: 60)
-                            statCell(value: totalGastado.formatted(.currency(code: "ARS")), label: "TOTAL HISTÓRICO", green: false, small: true)
+                            statCell(value: store.convert(totalGastado).formatted(.currency(code: store.currencyCode)), label: "TOTAL HISTÓRICO", green: false, small: true)
                             Divider().frame(height: 60)
-                            statCell(value: (totalGastado * 0.12).formatted(.currency(code: "ARS")), label: "AHORRADO", green: true, small: true)
+                            statCell(value: store.convert(totalGastado * 0.12).formatted(.currency(code: store.currencyCode)), label: "AHORRADO", green: true, small: true)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -176,7 +176,7 @@ struct PerfilView: View {
                                         .font(.system(size: 16, weight: .semibold))
                                         .foregroundStyle(Color.saLabel)
                                         .tracking(-0.3)
-                                    Text("\(totalGastado.formatted(.currency(code: "ARS"))) de \(500000.0.formatted(.currency(code: "ARS")))")
+                                    Text("\(store.convert(totalGastado).formatted(.currency(code: store.currencyCode))) de \(store.convert(500000.0).formatted(.currency(code: store.currencyCode)))")
                                         .font(.system(size: 13))
                                         .foregroundStyle(Color.saLabel3)
                                 }

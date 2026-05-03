@@ -32,6 +32,11 @@ final class UserScopedStorage {
     private(set) var presupuestoActivo:    Bool   = false
     private(set) var presupuestoMensual:   Double = 0
     private(set) var presupuestoAlertaMes: String = ""
+    // Preferencias globales de dispositivo (sin scope de usuario)
+    private(set) var currencyCode:         String = "ARS"
+    private(set) var languageCode:         String = "es"
+    // Tasa de cambio: cuántas unidades de currencyCode vale 1 ARS
+    private(set) var exchangeRate:         Double = 1.0
 
     // ── Sincronización UserDefaults → estado en memoria ───────────────────
     // Llamar: tras login, tras logout, y dentro de cada set().
@@ -42,6 +47,60 @@ final class UserScopedStorage {
         presupuestoActivo    = rawBool("presupuestoActivo",  default: false)
         presupuestoMensual   = rawDouble("presupuestoMensual", default: 0)
         presupuestoAlertaMes = rawString("presupuestoAlertaMes")
+        currencyCode         = UserDefaults.standard.string(forKey: "app_currencyCode") ?? "ARS"
+        languageCode         = UserDefaults.standard.string(forKey: "app_languageCode") ?? "es"
+        if let data = UserDefaults.standard.data(forKey: "cachedCurrencyRates"),
+           let rates = try? JSONDecoder().decode([String: Double].self, from: data) {
+            exchangeRate = rates[currencyCode] ?? 1.0
+        }
+    }
+
+    // Convierte un monto guardado en ARS a la moneda seleccionada
+    func convert(_ amount: Double) -> Double {
+        amount * exchangeRate
+    }
+
+    // Símbolo legible de la moneda actual
+    var currencySymbol: String {
+        switch currencyCode {
+        case "USD": return "US$"
+        case "EUR": return "€"
+        case "BRL": return "R$"
+        default:    return "$"
+        }
+    }
+
+    // Nombre legible de la moneda actual
+    var currencyName: String {
+        switch currencyCode {
+        case "USD": return "Dólares (USD)"
+        case "EUR": return "Euros (EUR)"
+        case "BRL": return "Reales (BRL)"
+        default:    return "Pesos argentinos (ARS)"
+        }
+    }
+
+    // Fetcha tasas desde la API y actualiza exchangeRate
+    func refreshExchangeRates() {
+        Task {
+            let rates = await CurrencyService.shared.fetchRates()
+            exchangeRate = rates[currencyCode] ?? 1.0
+        }
+    }
+
+    func setCurrencyCode(_ code: String) {
+        UserDefaults.standard.set(code, forKey: "app_currencyCode")
+        currencyCode = code
+        Task {
+            let rates = await CurrencyService.shared.fetchRates()
+            exchangeRate = rates[code] ?? 1.0
+        }
+    }
+
+    func setLanguageCode(_ code: String) {
+        UserDefaults.standard.set(code, forKey: "app_languageCode")
+        UserDefaults.standard.set([code], forKey: "AppleLanguages")
+        languageCode = code
     }
 
     // ── Lecturas genéricas (compatibilidad con callsites existentes) ──────

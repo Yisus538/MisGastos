@@ -11,6 +11,7 @@ struct NuevoProductoView: View {
     @State private var descripcion = ""
     @State private var precioStr = ""
     @State private var showScanner = false
+    @State private var store = UserScopedStorage.shared
 
     var body: some View {
         NavigationStack {
@@ -69,6 +70,7 @@ struct NuevoProductoView: View {
 
 struct ProductoRowView: View {
     let producto: Producto
+    @State private var store = UserScopedStorage.shared
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
@@ -78,7 +80,7 @@ struct ProductoRowView: View {
                 }
             }
             Spacer()
-            Text(producto.precio, format: .currency(code: "ARS"))
+            Text(store.convert(producto.precio), format: .currency(code: store.currencyCode))
                 .font(.subheadline).foregroundStyle(Color.saGreen)
         }
     }

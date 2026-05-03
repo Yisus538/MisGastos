@@ -14,6 +14,7 @@ struct DetalleCompraView: View {
     @State private var showTicketOptions = false
     @State private var showCamera = false
     @State private var showGallery = false
+    @State private var store = UserScopedStorage.shared
 
     private var storeInfo: SAStoreInfo { saStoreInfo(for: compra.supermercado) }
 
@@ -145,7 +146,7 @@ struct DetalleCompraView: View {
                         .foregroundStyle(.white.opacity(0.9))
                         .padding(.top, 2)
 
-                    Text(compra.total.formatted(.currency(code: "ARS")))
+                    Text(store.convert(compra.total).formatted(.currency(code: store.currencyCode)))
                         .font(.system(size: 38, weight: .bold))
                         .foregroundStyle(.white)
                         .tracking(-1.3)
@@ -232,7 +233,7 @@ struct DetalleCompraView: View {
                                 }
                             }
                             Spacer()
-                            Text(producto.precio.formatted(.currency(code: "ARS")))
+                            Text(store.convert(producto.precio).formatted(.currency(code: store.currencyCode)))
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(Color.saLabel)
                             Image(systemName: "chevron.right")
@@ -335,6 +336,6 @@ struct DetalleCompraView: View {
     }
 
     private func resumen() -> String {
-        "Compra en \(compra.supermercado)\nFecha: \(compra.fecha.formatted())\nTotal: \(compra.total.formatted(.currency(code: "ARS")))\nMétodo: \(compra.metodoPago)\nProductos: \(compra.productos.count)"
+        "Compra en \(compra.supermercado)\nFecha: \(compra.fecha.formatted())\nTotal: \(store.convert(compra.total).formatted(.currency(code: store.currencyCode)))\nMétodo: \(compra.metodoPago)\nProductos: \(compra.productos.count)"
     }
 }
