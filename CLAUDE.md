@@ -1,6 +1,6 @@
 # CLAUDE.md — Súper Ahorro iOS
 > Fuente de verdad del proyecto. Actualizá este archivo al final de cada ciclo de implementación.
-> Última actualización: 2026-05-03 (ciclo: Revisión completa — bugs ticket/Supabase, localización errores, consolidación Notion)
+> Última actualización: 2026-05-03 (ciclo: Widget WidgetKit — small + medium + lock screen; Notion sincronizado)
 
 ---
 
@@ -321,6 +321,8 @@ struct ProductoDraft: Identifiable, Equatable {
 | ~~Sync borrar producto → Supabase~~ | ✅ Implementado | `DetalleCompraView.eliminarProducto()` llama `borrarProducto` en background |
 | ~~Perfil: sincronizar con tabla `perfiles`~~ | ✅ Implementado | `EditarPerfilView`: al abrir carga `nombre` desde `perfiles` vía `fetchPerfil()`, al guardar escribe con `guardarPerfil(nombre:)`. Email deshabilitado (requiere confirmación en Supabase Auth). |
 | ~~Presupuesto mensual~~ | ✅ Implementado | `SettingsView`: toggle + campo de monto. `HomeView`: card con barra de progreso verde/naranja/rojo + `.alert` disparado una vez por mes al superar el límite (`presupuestoAlertaMes` en `@AppStorage`). |
+| ~~Widget de iOS (WidgetKit)~~ | ✅ Implementado | `MisGastosWidget/MisGastosWidget.swift` — `.systemSmall`, `.systemMedium`, `.accessoryRectangular` (lock screen). `Utils/WidgetDataWriter.swift` escribe en App Group `group.com.undef.superahorro`. `HomeView.writeWidgetData()` actualiza el widget en cada cambio de datos. |
+| ~~Siri Shortcuts (AppIntents)~~ | ✅ Implementado | `Intents/GastosMesIntent.swift` — `GastosMesIntent: AppIntent` lee del App Group UserDefaults. `SuperAhorroShortcuts: AppShortcutsProvider` registra 5 frases en español. Responde con diálogo + snippet visual `GastosMesSnippet`. |
 | Sign in with Apple / Google OAuth | ⬜ Próximo ciclo | Requiere configuración URL scheme en Xcode + Supabase OAuth providers |
 | Deep links / navegación programática avanzada | ⬜ Falta |
 

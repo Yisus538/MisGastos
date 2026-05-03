@@ -67,8 +67,9 @@ struct MisGastosWidgetView: View {
 
     var body: some View {
         switch family {
-        case .systemMedium: mediumView
-        default:            smallView
+        case .systemMedium:           mediumView
+        case .accessoryRectangular:   lockScreenView
+        default:                      smallView
         }
     }
 
@@ -167,6 +168,32 @@ struct MisGastosWidgetView: View {
         }
     }
 
+    // MARK: Lock Screen
+
+    private var lockScreenView: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "cart.fill")
+                .font(.system(size: 13, weight: .bold))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(entry.nombreMes.uppercased())
+                    .font(.system(size: 9, weight: .semibold))
+                    .opacity(0.75)
+                    .tracking(0.3)
+                Text(entry.totalMes.formatted(.currency(code: "ARS")))
+                    .font(.system(size: 14, weight: .bold))
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+            }
+            Spacer()
+            if entry.presupuestoActivo && entry.presupuesto > 0 {
+                Text(String(format: "%.0f%%", min(entry.totalMes / entry.presupuesto, 1) * 100))
+                    .font(.system(size: 12, weight: .semibold))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
+    }
+
     // MARK: Shared subviews
 
     private var brandRow: some View {
@@ -220,7 +247,7 @@ struct MisGastosWidget: Widget {
         }
         .configurationDisplayName("Súper Ahorro")
         .description("Total gastado en el mes actual.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
     }
 }
 
@@ -242,6 +269,12 @@ struct MisGastosWidgetBundle: WidgetBundle {
 }
 
 #Preview(as: .systemMedium) {
+    MisGastosWidget()
+} timeline: {
+    GastosMesEntry.placeholder
+}
+
+#Preview(as: .accessoryRectangular) {
     MisGastosWidget()
 } timeline: {
     GastosMesEntry.placeholder
