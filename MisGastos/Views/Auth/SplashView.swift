@@ -1,9 +1,12 @@
 import SwiftUI
+import SwiftData
 
 struct SplashView: View {
-    @AppStorage("isLoggedIn")     private var isLoggedIn:    Bool   = false
     @AppStorage("aparienciaMode") private var aparienciaRaw: String = "sistema"
+    @Environment(\.modelContext)  private var modelContext
     @State private var showMain = false
+
+    private let session = SessionStore.shared
 
     private var preferredScheme: ColorScheme? {
         (AparienciaMode(rawValue: aparienciaRaw) ?? .sistema).colorScheme
@@ -17,7 +20,8 @@ struct SplashView: View {
     var body: some View {
         if showMain {
             Group {
-                if isLoggedIn { MainTabView() } else { LoginView() }
+                // SessionStore es la única fuente de verdad: deriva de Supabase authStateChanges
+                if session.isAuthenticated { MainTabView() } else { LoginView() }
             }
             .preferredColorScheme(preferredScheme)
         } else {
@@ -72,15 +76,14 @@ struct SplashView: View {
                     textOffset = 0
                 }
                 dotAnimating = true
-                // Espera que la sesión esté lista y sincroniza preferencias
-                if isLoggedIn {
-                    Task {
-                        await SupabaseService.shared.restaurarSesion()
-                        if let remote = try? await SupabaseService.shared.fetchApariencia(),
-                           AparienciaMode(rawValue: remote) != nil {
-                            aparienciaRaw = remote
-                        }
+                Task {
+                    // Fetch preferencias y sync de compras pendientes.
+                    // SyncService comprueba isSessionActive internamente; no hay que guardar.
+                    if let remote = try? await SupabaseService.shared.fetchApariencia(),
+                       AparienciaMode(rawValue: remote) != nil {
+                        aparienciaRaw = remote
                     }
+                    await SyncService.shared.sincronizarPendientes(context: modelContext)
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
                     withAnimation(.easeInOut(duration: 0.3)) { showMain = true }

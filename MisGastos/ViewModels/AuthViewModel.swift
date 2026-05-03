@@ -9,7 +9,6 @@ final class AuthViewModel {
     var isLoading: Bool = false
     var errorMessage: String?
 
-    private let defaults = UserDefaults.standard
     private let supabase = SupabaseService.shared
 
     func login() async {
@@ -24,10 +23,8 @@ final class AuthViewModel {
         let emailNorm = email.lowercased().trimmingCharacters(in: .whitespaces)
         do {
             try await supabase.login(email: emailNorm, password: password)
-            defaults.set(emailNorm, forKey: "usuarioEmail")
-            defaults.set(true, forKey: "isLoggedIn")
-            let nombreGuardado = supabase.nombreFromMetadata() ?? emailNorm
-            defaults.set(nombreGuardado, forKey: "usuarioNombre")
+            // SessionStore.shared observa .signedIn y actualiza isAuthenticated automáticamente.
+            // SplashView re-renderiza a MainTabView sin escritura manual en UserDefaults.
         } catch {
             let msg = error.localizedDescription.lowercased()
             if msg.contains("email not confirmed") || msg.contains("not confirmed") {
@@ -58,14 +55,9 @@ final class AuthViewModel {
         let emailNorm = email.lowercased().trimmingCharacters(in: .whitespaces)
         do {
             try await supabase.register(email: emailNorm, password: password, nombre: nombre)
-            defaults.set(emailNorm, forKey: "usuarioEmail")
-            defaults.set(nombre, forKey: "usuarioNombre")
-
-            // Si Supabase creó sesión activa → confirmación de email desactivada → acceso directo
-            // Si no hay sesión → confirmación requerida → el usuario debe confirmar su email
-            if supabase.isSessionActive {
-                defaults.set(true, forKey: "isLoggedIn")
-            } else {
+            // Si Supabase creó sesión activa → SessionStore detecta .signedIn → navega a main
+            // Si no hay sesión → confirmación de email requerida → informamos al usuario
+            if !supabase.isSessionActive {
                 errorMessage = "Cuenta creada. Revisá tu email para confirmarla antes de iniciar sesión."
             }
         } catch {
@@ -75,7 +67,7 @@ final class AuthViewModel {
             } else if msg.contains("password") && msg.contains("weak") {
                 errorMessage = "La contraseña es muy débil. Usá al menos 6 caracteres con letras y números."
             } else {
-                errorMessage = error.localizedDescription
+                errorMessage = "No se pudo crear la cuenta. Intentá de nuevo."
             }
         }
     }

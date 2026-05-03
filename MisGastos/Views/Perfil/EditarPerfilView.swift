@@ -11,6 +11,7 @@ struct EditarPerfilView: View {
     @State private var emailEdit  = ""
     @State private var photoItem: PhotosPickerItem?
     @State private var isSaving = false
+    @State private var isLoading = false
 
     private var initials: String {
         let parts = nombreEdit.split(separator: " ")
@@ -78,6 +79,8 @@ struct EditarPerfilView: View {
                         SAField(placeholder: "Correo electrónico", text: $emailEdit, icon: "envelope")
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
+                            .disabled(true)
+                            .opacity(0.55)
                     }
 
                     SAButton(title: "Guardar cambios", isLoading: isSaving) {
@@ -90,9 +93,15 @@ struct EditarPerfilView: View {
                 .padding(.horizontal, 24)
             }
         }
-        .onAppear {
+        .task {
             nombreEdit = nombre
             emailEdit  = email
+            isLoading = true
+            if let perfil = try? await SupabaseService.shared.fetchPerfil(),
+               !perfil.nombre.isEmpty {
+                nombreEdit = perfil.nombre
+            }
+            isLoading = false
         }
         .onChange(of: photoItem) { _, item in
             Task { await cargarFoto(item) }
@@ -137,9 +146,15 @@ struct EditarPerfilView: View {
     }
 
     private func guardar() {
-        nombre = nombreEdit
-        email  = emailEdit
-        dismiss()
+        let nombreFinal = nombreEdit.trimmingCharacters(in: .whitespaces)
+        guard !nombreFinal.isEmpty else { return }
+        nombre = nombreFinal
+        isSaving = true
+        Task {
+            try? await SupabaseService.shared.guardarPerfil(nombre: nombreFinal)
+            isSaving = false
+            dismiss()
+        }
     }
 
     // Redimensiona a 300×300 px máx y comprime a JPEG 0.75 (~50–120 KB)

@@ -4,8 +4,12 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Compra.fecha, order: .reverse) private var compras: [Compra]
-    @AppStorage("usuarioNombre") private var nombre: String = "Usuario"
+    @AppStorage("usuarioNombre")       private var nombre: String = "Usuario"
+    @AppStorage("presupuestoActivo")   private var presupuestoActivo: Bool = false
+    @AppStorage("presupuestoMensual")  private var presupuesto: Double = 0
+    @AppStorage("presupuestoAlertaMes") private var presupuestoAlertaMes: String = ""
     @State private var showNuevaCompra = false
+    @State private var showBudgetAlert = false
 
     private var cal: Calendar { .current }
 
@@ -59,6 +63,11 @@ struct HomeView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
                     header
+                    if presupuestoActivo && presupuesto > 0 {
+                        budgetCard
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                    }
                     recentSection
                         .padding(.top, 24)
                         .padding(.horizontal, 20)
@@ -82,6 +91,13 @@ struct HomeView: View {
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(isPresented: $showNuevaCompra) { NuevaCompraView() }
+        .alert("Presupuesto superado", isPresented: $showBudgetAlert) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text("Gastaste \(totalEsteMes.formatted(.currency(code: "ARS"))) este mes, superando tu límite de \(presupuesto.formatted(.currency(code: "ARS"))) por \((totalEsteMes - presupuesto).formatted(.currency(code: "ARS"))).")
+        }
+        .onAppear { verificarPresupuesto() }
+        .onChange(of: totalEsteMes) { _, _ in verificarPresupuesto() }
     }
 
     // MARK: - Header
@@ -268,6 +284,74 @@ struct HomeView: View {
             }
         }
         .contentShape(Rectangle())
+    }
+
+    // MARK: - Budget card
+
+    @ViewBuilder
+    private var budgetCard: some View {
+        let progress = presupuesto > 0 ? min(totalEsteMes / presupuesto, 1.0) : 0
+        let pct      = Int(progress * 100)
+        let excedido = totalEsteMes >= presupuesto
+        let cercano  = progress >= 0.8
+        let barColor: Color = excedido ? .saDanger : cercano ? Color(hex: "#F97316") : .saGreen
+
+        SACard {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: excedido ? "exclamationmark.triangle.fill"
+                                     : cercano  ? "exclamationmark.circle.fill" : "target")
+                        .font(.system(size: 15))
+                        .foregroundStyle(barColor)
+                    Text("Presupuesto de \(mesActual.lowercased())")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.saLabel)
+                        .tracking(-0.3)
+                    Spacer()
+                    Text("\(pct)%")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(barColor)
+                }
+
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 4).fill(Color.saBg).frame(height: 8)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(barColor)
+                            .frame(width: max(0, geo.size.width * CGFloat(progress)), height: 8)
+                            .animation(.spring(duration: 0.4), value: progress)
+                    }
+                }
+                .frame(height: 8)
+
+                HStack {
+                    Text(totalEsteMes.formatted(.currency(code: "ARS")))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(barColor)
+                    Text("/ \(presupuesto.formatted(.currency(code: "ARS")))")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.saLabel3)
+                    Spacer()
+                    if excedido {
+                        Text("Límite superado")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color.saDanger)
+                    } else if cercano {
+                        Text("Cerca del límite")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(hex: "#F97316"))
+                    }
+                }
+            }
+        }
+    }
+
+    private func verificarPresupuesto() {
+        guard presupuestoActivo, presupuesto > 0, totalEsteMes >= presupuesto else { return }
+        let mesKey = Date().formatted(.dateTime.year().month())
+        guard presupuestoAlertaMes != mesKey else { return }
+        presupuestoAlertaMes = mesKey
+        showBudgetAlert = true
     }
 
     private var emptyState: some View {

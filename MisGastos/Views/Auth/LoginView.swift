@@ -4,7 +4,6 @@ struct LoginView: View {
     @State private var viewModel = AuthViewModel()
     @State private var showRegister = false
     @State private var showForgot = false
-    @AppStorage("isLoggedIn")   private var isLoggedIn: Bool = false
     @AppStorage("usuarioEmail") private var usuarioEmail: String = ""
 
     private let biometric = BiometricService.shared
@@ -93,7 +92,15 @@ struct LoginView: View {
                                 Button {
                                     Task {
                                         let ok = await biometric.authenticate(reason: "Accedé a Súper Ahorro")
-                                        if ok { isLoggedIn = true }
+                                        if ok {
+                                // Intenta refrescar la sesión de Supabase desde Keychain.
+                                // Si tiene éxito, SessionStore detecta .tokenRefreshed y navega sola.
+                                // Si la sesión expiró completamente, informa al usuario.
+                                await SupabaseService.shared.restaurarSesion()
+                                if !SupabaseService.shared.isSessionActive {
+                                    viewModel.errorMessage = "Tu sesión expiró. Iniciá sesión con tu contraseña."
+                                }
+                            }
                                     }
                                 } label: {
                                     HStack(spacing: 10) {

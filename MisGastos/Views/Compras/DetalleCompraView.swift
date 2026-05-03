@@ -46,7 +46,9 @@ struct DetalleCompraView: View {
         .alert("Eliminar compra", isPresented: $showDeleteAlert) {
             Button("Cancelar", role: .cancel) {}
             Button("Eliminar", role: .destructive) {
+                let compraID = compra.id
                 modelContext.delete(compra)
+                Task { try? await SupabaseService.shared.borrarCompra(id: compraID) }
                 dismiss()
             }
         } message: {
@@ -174,32 +176,42 @@ struct DetalleCompraView: View {
     @ViewBuilder
     private var content: some View {
         VStack(spacing: 0) {
-            // Ticket section
-            if compra.imagenTicket != nil || true {
-                sectionLabel("TICKET")
-                SACard(padding: 0) {
-                    if let data = compra.imagenTicket, let img = UIImage(data: data) {
-                        Image(uiImage: img)
-                            .resizable().scaledToFit()
-                            .frame(maxHeight: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .padding(16)
-                    }
-                    Button { showTicketOptions = true } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "photo.on.rectangle.angled")
-                                .foregroundStyle(Color.saGreen)
-                            Text(compra.imagenTicket == nil ? "Adjuntar ticket" : "Cambiar foto")
-                                .font(.system(size: 15))
-                                .foregroundStyle(Color.saGreen)
+            // Ticket section — siempre visible para permitir adjuntar/cambiar foto
+            sectionLabel("TICKET")
+            SACard(padding: 0) {
+                if let urlStr = compra.ticketURL, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable().scaledToFit()
+                                .frame(maxHeight: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .padding(16)
+                        default:
+                            ProgressView().padding(20)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 14)
                     }
-                    .buttonStyle(.plain)
+                } else if let data = compra.imagenTicket, let img = UIImage(data: data) {
+                    Image(uiImage: img)
+                        .resizable().scaledToFit()
+                        .frame(maxHeight: 200)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .padding(16)
                 }
-                .padding(.bottom, 20)
+                Button { showTicketOptions = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .foregroundStyle(Color.saGreen)
+                        Text((compra.imagenTicket == nil && compra.ticketURL == nil) ? "Adjuntar ticket" : "Cambiar foto")
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.saGreen)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
             }
+            .padding(.bottom, 20)
 
             // Products
             sectionLabel("PRODUCTOS (\(compra.productos.count))")
@@ -315,9 +327,11 @@ struct DetalleCompraView: View {
     }
 
     private func eliminarProducto(_ producto: Producto) {
+        let productoID = producto.id
         compra.total = max(0, compra.total - producto.precio)
         compra.productos.removeAll { $0.id == producto.id }
         modelContext.delete(producto)
+        Task { try? await SupabaseService.shared.borrarProducto(id: productoID) }
     }
 
     private func resumen() -> String {

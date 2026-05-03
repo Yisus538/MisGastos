@@ -14,7 +14,7 @@ final class ComprasViewModel {
         do {
             supermercados = try await NetworkService.shared.fetchSupermercados()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = "No se pudo cargar la lista de tiendas."
             supermercados = NetworkService.shared.supermercadosFallback
         }
     }

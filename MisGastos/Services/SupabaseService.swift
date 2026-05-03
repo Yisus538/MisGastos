@@ -6,7 +6,8 @@
 // 2. Crear proyecto en supabase.com (plan gratuito)
 // 3. Ejecutar Resources/supabase_schema.sql en el SQL Editor
 // 4. Storage → New bucket: "tickets-usuarios" (privado)
-// 5. Reemplazar SUPABASE_URL y SUPABASE_ANON_KEY abajo
+// 5. Copiar MisGastos/Secrets.xcconfig.example → Secrets.xcconfig
+//    y completar SUPABASE_URL y SUPABASE_ANON_KEY
 // =====================================================
 
 import Foundation
@@ -54,8 +55,6 @@ private struct SupermercadoRemoto: Codable {
 final class SupabaseService {
     static let shared = SupabaseService()
 
-    // ⚠️ Reemplazá estos valores con los de tu proyecto en supabase.com
-    // Project Settings → API → Project URL y anon key
     private static let supabaseURL = URL(string: "https://umbxwxsikjvqkybraipi.supabase.co")!
     private static let supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtYnh3eHNpa2p2cWt5YnJhaXBpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NTI3MDcsImV4cCI6MjA5MzMyODcwN30.IXUZhe39Pu_QrpBXlr5neDEV0UduyaoQ0ZU0TCXMNmk"
 
@@ -251,6 +250,28 @@ final class SupabaseService {
             .execute()
             .value
         return rows.first?.apariencia
+    }
+
+    func fetchPerfil() async throws -> (nombre: String, telefono: String) {
+        guard let userID = currentUserID else { throw SAError.noSession }
+        struct Row: Decodable { let nombre: String; let telefono: String? }
+        let rows: [Row] = try await client
+            .from("perfiles")
+            .select("nombre, telefono")
+            .eq("id", value: userID.uuidString)
+            .execute()
+            .value
+        let row = rows.first
+        return (nombre: row?.nombre ?? "", telefono: row?.telefono ?? "")
+    }
+
+    func guardarPerfil(nombre: String) async throws {
+        guard let userID = currentUserID else { throw SAError.noSession }
+        try await client
+            .from("perfiles")
+            .update(["nombre": nombre])
+            .eq("id", value: userID.uuidString)
+            .execute()
     }
 
     // MARK: - Supermercados

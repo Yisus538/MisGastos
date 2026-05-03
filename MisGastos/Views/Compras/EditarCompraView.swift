@@ -182,6 +182,14 @@ struct EditarCompraView: View {
         compra.total = total
         compra.metodoPago = metodoPago
         compra.fecha = fecha
+        let snap = (id: compra.id, supermercado: supermercado, fecha: fecha,
+                    total: total, metodoPago: metodoPago, ticketURL: compra.ticketURL)
+        Task {
+            try? await SupabaseService.shared.actualizarCompra(
+                id: snap.id, supermercado: snap.supermercado, fecha: snap.fecha,
+                total: snap.total, metodoPago: snap.metodoPago, ticketURL: snap.ticketURL
+            )
+        }
         dismiss()
     }
 }

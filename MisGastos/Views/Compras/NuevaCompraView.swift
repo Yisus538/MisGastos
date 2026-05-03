@@ -453,19 +453,25 @@ struct NuevaCompraView: View {
             modelContext.insert(producto)
         }
 
-        // Sync a Supabase en background (fire and forget)
-        let snap = (compra.id, compra.fecha, compra.supermercado, compra.total, compra.metodoPago, compra.ticketURL)
-        let prodSnaps = productos.map { ($0.id, $0.nombre, $0.descripcion, $0.codigo, $0.precio) }
-        Task.detached {
-            try? await SupabaseService.shared.crearCompra(
-                id: snap.0, fecha: snap.1, supermercado: snap.2,
-                total: snap.3, metodoPago: snap.4, ticketURL: snap.5
-            )
-            for (pid, nombre, desc, cod, precio) in prodSnaps {
-                try? await SupabaseService.shared.crearProducto(
-                    id: pid, compraID: snap.0, nombre: nombre,
-                    descripcion: desc, codigo: cod, precio: precio
+        // Intenta sync inmediato; si falla, isSynced queda false y
+        // SyncService.sincronizarPendientes() reintentará en el próximo arranque.
+        Task {
+            do {
+                try await SupabaseService.shared.crearCompra(
+                    id: compra.id, fecha: compra.fecha, supermercado: compra.supermercado,
+                    total: compra.total, metodoPago: compra.metodoPago, ticketURL: compra.ticketURL
                 )
+                compra.isSynced = true
+                for producto in compra.productos {
+                    try await SupabaseService.shared.crearProducto(
+                        id: producto.id, compraID: compra.id, nombre: producto.nombre,
+                        descripcion: producto.descripcion, codigo: producto.codigo, precio: producto.precio
+                    )
+                    producto.isSynced = true
+                }
+                try? modelContext.save()
+            } catch {
+                // Sin conexión: isSynced = false persiste para reintento posterior
             }
         }
 

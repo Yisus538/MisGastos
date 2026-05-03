@@ -7,9 +7,9 @@ struct MisGastosApp: App {
         WindowGroup {
             SplashView()
                 .task {
-                    // Restaura la sesión Supabase antes de que cualquier vista
-                    // intente acceder a currentUserID
-                    await SupabaseService.shared.restaurarSesion()
+                    // Inicializa SessionStore para que suscriba a authStateChanges de Supabase
+                    // antes de que SplashView decida el routing (2.2s de animación de margen).
+                    _ = SessionStore.shared
                 }
         }
         .modelContainer(for: [Compra.self, Producto.self, Usuario.self])

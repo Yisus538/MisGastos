@@ -8,6 +8,7 @@ final class Producto {
     var nombre: String
     var descripcion: String
     var precio: Double
+    var isSynced: Bool = false
     var compra: Compra?
 
     init(codigo: String, nombre: String, descripcion: String, precio: Double) {

@@ -22,6 +22,9 @@
     "·" : {
 
     },
+    "/ %@" : {
+
+    },
     "%@ · %lld items" : {
       "localizations" : {
         "es" : {
@@ -208,6 +211,9 @@
 
     },
     "Cantidad" : {
+
+    },
+    "Cerca del límite" : {
 
     },
     "Cerrar sesión" : {
@@ -430,6 +436,9 @@
     "Encontrá dónde comprás más barato" : {
 
     },
+    "Entendido" : {
+
+    },
     "Enviamos las instrucciones a:" : {
 
     },
@@ -473,6 +482,16 @@
     },
     "Gastado este mes" : {
 
+    },
+    "Gastaste %@ este mes, superando tu límite de %@ por %@." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Gastaste %1$@ este mes, superando tu límite de %2$@ por %3$@."
+          }
+        }
+      }
     },
     "Gastaste más" : {
 
@@ -650,6 +669,12 @@
 
     },
     "Inicio" : {
+
+    },
+    "Límite mensual en ARS" : {
+
+    },
+    "Límite superado" : {
 
     },
     "login.button" : {
@@ -882,6 +907,12 @@
 
     },
     "Política de Privacidad" : {
+
+    },
+    "Presupuesto de %@" : {
+
+    },
+    "Presupuesto superado" : {
 
     },
     "Producto" : {

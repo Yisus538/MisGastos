@@ -1,0 +1,13 @@
+# Credenciales — nunca commitear
+MisGastos/Secrets.xcconfig
+
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store

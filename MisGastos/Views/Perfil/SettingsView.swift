@@ -2,7 +2,6 @@ import SwiftUI
 import UserNotifications
 
 struct SettingsView: View {
-    @AppStorage("isLoggedIn")      private var isLoggedIn:    Bool   = false
     @AppStorage("aparienciaMode")  private var aparienciaRaw: String = "sistema"
     @State private var notificaciones  = false
     @State private var showApariencia  = false
@@ -81,8 +80,47 @@ struct SettingsView: View {
                                 iconBg: Color(hex: "#FF9500"),
                                 title: "OCR automático de tickets",
                                 binding: $ocrAutomatico,
-                                isLast: true
+                                isLast: false
                             )
+                            toggleRow(
+                                icon: "banknote",
+                                iconBg: Color.saGreen,
+                                title: "Presupuesto mensual",
+                                binding: $presupuestoActivo,
+                                isLast: !presupuestoActivo
+                            )
+                            if presupuestoActivo {
+                                HStack(spacing: 14) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 8).fill(Color.saGreen)
+                                        Image(systemName: "dollarsign")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(.white)
+                                    }
+                                    .frame(width: 32, height: 32)
+                                    TextField("Límite mensual en ARS", text: $presupuestoStr)
+                                        .keyboardType(.decimalPad)
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(Color.saLabel)
+                                        .onChange(of: presupuestoStr) { _, v in
+                                            let clean = v.filter { $0.isNumber || $0 == "." || $0 == "," }
+                                            presupuestoStr = clean
+                                            if let val = Double(clean.replacingOccurrences(of: ",", with: ".")) {
+                                                presupuesto = val
+                                            }
+                                        }
+                                    Spacer()
+                                    if presupuesto > 0 {
+                                        Text(presupuesto.formatted(.currency(code: "ARS")))
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(Color.saLabel3)
+                                            .lineLimit(1)
+                                            .minimumScaleFactor(0.7)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(minHeight: 50)
+                            }
                         }
 
                         // Datos
@@ -115,7 +153,6 @@ struct SettingsView: View {
                         // Logout
                         Button {
                             Task { try? await SupabaseService.shared.logout() }
-                            isLoggedIn = false
                         } label: {
                             Text("Cerrar sesión")
                                 .font(.system(size: 17, weight: .semibold))
@@ -131,6 +168,13 @@ struct SettingsView: View {
                     }
                     .padding(.horizontal, 20)
                 }
+            }
+        }
+        .onAppear {
+            if presupuesto > 0 {
+                presupuestoStr = presupuesto.truncatingRemainder(dividingBy: 1) == 0
+                    ? String(Int(presupuesto))
+                    : String(format: "%.2f", presupuesto)
             }
         }
         .sheet(isPresented: $showApariencia) { AparienciaSheet() }

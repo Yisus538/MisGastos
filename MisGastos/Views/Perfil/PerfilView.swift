@@ -4,7 +4,6 @@ import SwiftData
 struct PerfilView: View {
     @AppStorage("usuarioNombre") private var nombre: String = ""
     @AppStorage("usuarioEmail")  private var email:  String = ""
-    @AppStorage("isLoggedIn")    private var isLoggedIn: Bool = false
     @AppStorage("avatarData")    private var avatarData: Data = Data()
     @Query private var compras: [Compra]
     @State private var showSettings = false
@@ -198,8 +197,9 @@ struct PerfilView: View {
 
                         // Logout
                         Button {
+                            // Supabase dispara .signedOut → SessionStore.isAuthenticated = false
+                            // → SplashView re-renderiza a LoginView automáticamente.
                             Task { try? await SupabaseService.shared.logout() }
-                            isLoggedIn = false
                         } label: {
                             Text("Cerrar sesión")
                                 .font(.system(size: 17, weight: .semibold))
