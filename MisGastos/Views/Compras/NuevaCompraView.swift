@@ -461,26 +461,49 @@ struct NuevaCompraView: View {
         // Guardar a disco antes del sync para no perder datos si hay error de red.
         try? modelContext.save()
 
-        // Intenta sync inmediato; si falla, isSynced queda false y
-        // SyncService.sincronizarPendientes() reintentará en el próximo arranque.
+        // Sync inmediato en background. La compra y los productos se sincronizan
+        // de forma independiente: si la compra llega a Supabase, se marca synced y
+        // se guarda en disco aunque algún producto falle. SyncService reintenta
+        // los productos pendientes en el próximo arranque.
+        let compraID       = compra.id
+        let compraFecha    = compra.fecha
+        let compraSupermer = compra.supermercado
+        let compraTotal    = compra.total
+        let compraPago     = compra.metodoPago
+        let compraTicket   = compra.ticketURL
+        // Capturar datos de productos antes de que el contexto pueda mutar
+        let productosSnapshot = compra.productos.map { p in
+            (id: p.id, nombre: p.nombre, descripcion: p.descripcion,
+             codigo: p.codigo, precio: p.precio)
+        }
         Task {
+            // 1. Sync compra
             do {
                 try await SupabaseService.shared.crearCompra(
-                    id: compra.id, fecha: compra.fecha, supermercado: compra.supermercado,
-                    total: compra.total, metodoPago: compra.metodoPago, ticketURL: compra.ticketURL
+                    id: compraID, fecha: compraFecha, supermercado: compraSupermer,
+                    total: compraTotal, metodoPago: compraPago, ticketURL: compraTicket
                 )
                 compra.isSynced = true
-                for producto in compra.productos {
-                    try await SupabaseService.shared.crearProducto(
-                        id: producto.id, compraID: compra.id, nombre: producto.nombre,
-                        descripcion: producto.descripcion, codigo: producto.codigo, precio: producto.precio
-                    )
-                    producto.isSynced = true
-                }
-                try? modelContext.save()
+                try? modelContext.save()   // Guardar isSynced=true inmediatamente
             } catch {
-                // Sin conexión: isSynced = false persiste para reintento posterior
+                return  // Sin sesión o error de red: isSynced=false, SyncService reintentará
             }
+            // 2. Sync productos (independiente: un fallo no afecta el isSynced de la compra)
+            for pd in productosSnapshot {
+                do {
+                    try await SupabaseService.shared.crearProducto(
+                        id: pd.id, compraID: compraID, nombre: pd.nombre,
+                        descripcion: pd.descripcion, codigo: pd.codigo, precio: pd.precio
+                    )
+                    // Marcar producto como synced en SwiftData
+                    if let prod = compra.productos.first(where: { $0.id == pd.id }) {
+                        prod.isSynced = true
+                    }
+                } catch {
+                    // Producto queda isSynced=false; SyncService reintentará en el próximo arranque
+                }
+            }
+            try? modelContext.save()
         }
 
         dismiss()

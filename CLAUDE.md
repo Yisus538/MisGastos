@@ -1,6 +1,6 @@
 # CLAUDE.md — Súper Ahorro iOS
 > Fuente de verdad del proyecto. Actualizá este archivo al final de cada ciclo de implementación.
-> Última actualización: 2026-05-03 (ciclo: Conversión de moneda real — CurrencyService + exchangeRate en UserScopedStorage)
+> Última actualización: 2026-05-03 (ciclo: Membresía Gratis/Pro — MembresiaView + MembresiaService + tabla Supabase + fila en SettingsView)
 
 ---
 
@@ -248,6 +248,24 @@ struct ProductoDraft: Identifiable, Equatable {
 - `sincronizarPendientes(context: ModelContext) async` — busca `Compra` con `isSynced == false`, las sincroniza a Supabase y marca `isSynced = true`. Llamado en `SplashView.onAppear` antes del routing.
 - Seguro llamar en cada arranque: si no hay sesión activa retorna inmediatamente.
 
+### `MembresiaService` — `Services/MembresiaService.swift`
+- Singleton: `MembresiaService.shared` (`@MainActor`)
+- DTOs: `MembresiaDTO` (Codable), `MembresiaUpsert` (Encodable, privado)
+- `fetchMembresia() -> MembresiaDTO?` — lee tabla `membresias` con `.single()`. Devuelve `nil` si no hay registro.
+- `sincronizar()` — fetch + actualiza `UserScopedStorage` con el plan activo, billing cycle, precio y fecha de renovación
+- `suscribirPro(billingCycle:)` — upsert a `membresias` con plan `"pro"`, calcula precio (mensual $2990 / anual $28704) y fecha de renovación; actualiza UserScopedStorage
+- `cancelarPlan()` — upsert con plan `"gratis"`, limpia fecha de renovación
+- Supabase table: `membresias` (RLS habilitado, `UNIQUE(user_id)`, upsert on conflict)
+
+### `MembresiaView` — `Views/Perfil/MembresiaView.swift`
+- Sheet presentada desde `SettingsView`
+- Header: gradiente verde, back button, pill "SÚPER AHORRO+", toggle Mensual/Anual (-20%)
+- Tarjeta Gratis: radio button, precio $0, 6 features (3 incluidas / 3 tachadas), botón "Cancelar suscripción Pro" solo visible cuando plan activo es Pro
+- Tarjeta Pro: badge "RECOMENDADO", badge "PLAN ACTUAL" si activo, precio animado con `contentTransition`, 6 features todas activas, SAButton (disabled+opacidad si plan activo)
+- Al confirmar Pro: llama `MembresiaService.shared.suscribirPro(billingCycle:)` + actualiza `UserScopedStorage`
+- Al cancelar: `.alert` de confirmación → `cancelarPlan()`
+- En `onAppear`: llama `MembresiaService.shared.sincronizar()` para refrescar estado
+
 ### `CurrencyService` — `Services/CurrencyService.swift`
 - Singleton: `CurrencyService.shared`
 - `fetchRates() async -> [String: Double]` — obtiene tasas desde `open.er-api.com/v6/latest/ARS` (gratis, sin API key). Base: 1 ARS = X moneda. Fallback a tasas hardcodeadas + caché en UserDefaults (`cachedCurrencyRates`)
@@ -326,7 +344,8 @@ struct ProductoDraft: Identifiable, Equatable {
 | ~~Sync editar/borrar compra → Supabase~~ | ✅ Implementado | `EditarCompraView.guardar()` llama `actualizarCompra` en background; `DetalleCompraView` llama `borrarCompra` al eliminar |
 | ~~Sync borrar producto → Supabase~~ | ✅ Implementado | `DetalleCompraView.eliminarProducto()` llama `borrarProducto` en background |
 | ~~Perfil: sincronizar con tabla `perfiles`~~ | ✅ Implementado | `EditarPerfilView`: al abrir carga `nombre` desde `perfiles` vía `fetchPerfil()`, al guardar escribe con `guardarPerfil(nombre:)`. Email deshabilitado (requiere confirmación en Supabase Auth). |
-| ~~Presupuesto mensual~~ | ✅ Implementado | `SettingsView`: toggle + campo de monto. `HomeView`: card con barra de progreso verde/naranja/rojo + `.alert` disparado una vez por mes al superar el límite (`presupuestoAlertaMes` en `@AppStorage`). |
+| ~~Presupuesto mensual~~ | ✅ Implementado |
+| ~~Membresía Gratis/Pro~~ | ✅ Implementado | `MembresiaView` + `MembresiaService` + tabla `membresias` en Supabase | `SettingsView`: toggle + campo de monto. `HomeView`: card con barra de progreso verde/naranja/rojo + `.alert` disparado una vez por mes al superar el límite (`presupuestoAlertaMes` en `@AppStorage`). |
 | ~~Widget de iOS (WidgetKit)~~ | ✅ Implementado | `MisGastosWidget/MisGastosWidget.swift` — `.systemSmall`, `.systemMedium`, `.accessoryRectangular` (lock screen). `Utils/WidgetDataWriter.swift` escribe en App Group `group.com.undef.superahorro`. `HomeView.writeWidgetData()` actualiza el widget en cada cambio de datos. |
 | ~~Siri Shortcuts (AppIntents)~~ | ✅ Implementado | `Intents/GastosMesIntent.swift` — `GastosMesIntent: AppIntent` lee del App Group UserDefaults. `SuperAhorroShortcuts: AppShortcutsProvider` registra 5 frases en español. Responde con diálogo + snippet visual `GastosMesSnippet`. |
 | Sign in with Apple / Google OAuth | ⬜ Próximo ciclo | Requiere configuración URL scheme en Xcode + Supabase OAuth providers |

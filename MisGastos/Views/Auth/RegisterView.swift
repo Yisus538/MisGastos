@@ -100,14 +100,19 @@ struct RegisterView: View {
                     .padding(.top, 20)
                     .padding(.horizontal, 2)
 
-                    if let error = viewModel.errorMessage {
+                    if let success = viewModel.successMessage {
+                        Label(success, systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(Color.saGreen)
+                            .padding(.top, 8)
+                    } else if let error = viewModel.errorMessage {
                         Text(error).font(.caption).foregroundStyle(Color.saDanger).padding(.top, 8)
                     }
 
                     SAButton(title: "Crear cuenta", isLoading: viewModel.isLoading) {
                         Task { await viewModel.register() }
                     }
-                    .disabled(!termsAccepted)
+                    .disabled(!termsAccepted || viewModel.successMessage != nil)
                     .padding(.top, 16)
 
                     HStack(spacing: 4) {

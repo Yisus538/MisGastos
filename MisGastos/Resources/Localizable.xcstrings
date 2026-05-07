@@ -28,6 +28,9 @@
     "/ %@" : {
 
     },
+    "/ mes" : {
+
+    },
     "%@ · %lld items" : {
       "localizations" : {
         "es" : {
@@ -111,6 +114,9 @@
 
     },
     "0" : {
+
+    },
+    "0,00" : {
 
     },
     "0.00" : {
@@ -235,6 +241,9 @@
     "Aún no registraste ninguna compra.\nUsá el **+** en Inicio para comenzar." : {
 
     },
+    "Autenticá para continuar" : {
+
+    },
     "Bienvenido" : {
 
     },
@@ -250,7 +259,19 @@
     "Cambiar foto" : {
 
     },
+    "Cancelá cuando quieras. Sin compromisos." : {
+
+    },
     "Cancelar" : {
+
+    },
+    "Cancelar plan" : {
+
+    },
+    "Cancelar suscripción" : {
+
+    },
+    "Cancelar suscripción Pro" : {
 
     },
     "Cantidad" : {
@@ -395,6 +416,9 @@
     "Consultas" : {
 
     },
+    "Controlá cada peso que gastás en el súper.\nCancelá cuando quieras." : {
+
+    },
     "Creá tu cuenta" : {
 
     },
@@ -467,10 +491,16 @@
     "Editar producto" : {
 
     },
+    "El más elegido" : {
+
+    },
     "Elegí el estilo visual de Súper Ahorro" : {
 
     },
     "Elegí el formato para exportar tus compras" : {
+
+    },
+    "Elegí tu plan" : {
 
     },
     "Elegí una tienda" : {
@@ -492,6 +522,9 @@
 
     },
     "Enviamos las instrucciones a:" : {
+
+    },
+    "Error" : {
 
     },
     "error.campos_vacios" : {
@@ -521,6 +554,9 @@
 
     },
     "Exportar historial" : {
+
+    },
+    "Facturado anualmente · $%@ ARS" : {
 
     },
     "Fecha" : {
@@ -561,6 +597,9 @@
 
     },
     "Gasto mensual" : {
+
+    },
+    "Gratis" : {
 
     },
     "Guardar" : {
@@ -829,6 +868,9 @@
     "Los productos se detectarán automáticamente con OCR" : {
 
     },
+    "Mantener Pro" : {
+
+    },
     "MÁS BARATO" : {
 
     },
@@ -848,6 +890,9 @@
 
     },
     "No recibí el correo" : {
+
+    },
+    "No se pudo autenticar. Intentá de nuevo." : {
 
     },
     "notif.recordatorio.body" : {
@@ -877,6 +922,12 @@
 
     },
     "OCR desactivado — agregá productos manualmente" : {
+
+    },
+    "OK" : {
+
+    },
+    "Para empezar" : {
 
     },
     "Perfil" : {
@@ -970,6 +1021,9 @@
     "Pesos argentinos" : {
 
     },
+    "PLAN ACTUAL" : {
+
+    },
     "Plan Pro" : {
 
     },
@@ -980,6 +1034,9 @@
 
     },
     "Presupuesto superado" : {
+
+    },
+    "Pro" : {
 
     },
     "Producto" : {
@@ -1102,6 +1159,9 @@
 
     },
     "PRODUCTOS MÁS COMPRADOS" : {
+
+    },
+    "RECOMENDADO" : {
 
     },
     "Recordé mi contraseña." : {
@@ -1319,6 +1379,9 @@
         }
       }
     },
+    "siempre" : {
+
+    },
     "Sin acceso a la cámara" : {
 
     },
@@ -1476,6 +1539,15 @@
     "Súper Ahorro" : {
 
     },
+    "Súper Ahorro+" : {
+
+    },
+    "SÚPER AHORRO+" : {
+
+    },
+    "Súper Ahorro+ Pro" : {
+
+    },
     "tab.historial" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1598,6 +1670,9 @@
 
     },
     "Tus gastos, visualizados" : {
+
+    },
+    "Vas a volver al plan Gratis. Podés reactivar Pro cuando quieras." : {
 
     },
     "Ver todas" : {

@@ -70,8 +70,12 @@ final class SyncService {
         guard let pendientes = try? context.fetch(descriptor), !pendientes.isEmpty else { return }
 
         for compra in pendientes {
+            // Upsert para manejar el caso en que la compra ya llegó a Supabase
+            // pero isSynced quedó false en disco (crash, fallo de producto, etc.).
+            // Un INSERT duplicado fallaba con constraint error y dejaba la compra
+            // bloqueada en isSynced=false para siempre.
             do {
-                try await SupabaseService.shared.crearCompra(
+                try await SupabaseService.shared.upsertCompra(
                     id: compra.id,
                     fecha: compra.fecha,
                     supermercado: compra.supermercado,
@@ -80,9 +84,15 @@ final class SyncService {
                     ticketURL: compra.ticketURL
                 )
                 compra.isSynced = true
+                try? context.save()  // Guardar isSynced=true antes de continuar con productos
+            } catch {
+                continue  // Sin sesión o error de red real: intentar en el próximo arranque
+            }
 
-                for producto in compra.productos where !producto.isSynced {
-                    try await SupabaseService.shared.crearProducto(
+            // Sync de productos de forma independiente
+            for producto in compra.productos where !producto.isSynced {
+                do {
+                    try await SupabaseService.shared.upsertProducto(
                         id: producto.id,
                         compraID: compra.id,
                         nombre: producto.nombre,
@@ -91,9 +101,9 @@ final class SyncService {
                         precio: producto.precio
                     )
                     producto.isSynced = true
+                } catch {
+                    // Producto pendiente: se reintentará en el próximo arranque
                 }
-            } catch {
-                // Deja isSynced = false; se reintentará en el próximo arranque
             }
         }
 

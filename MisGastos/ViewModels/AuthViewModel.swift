@@ -8,6 +8,7 @@ final class AuthViewModel {
     var nombre: String = ""
     var isLoading: Bool = false
     var errorMessage: String?
+    var successMessage: String?
 
     private let supabase = SupabaseService.shared
 
@@ -31,10 +32,10 @@ final class AuthViewModel {
                 errorMessage = "Confirmá tu email antes de iniciar sesión. Revisá tu bandeja de entrada."
             } else if msg.contains("invalid") || msg.contains("credentials") || msg.contains("wrong") {
                 errorMessage = "Email o contraseña incorrectos"
-            } else if msg.contains("network") || msg.contains("connection") || msg.contains("offline") {
-                errorMessage = "Sin conexión a internet. Verificá tu red."
+            } else if msg.contains("network") || msg.contains("connection") || msg.contains("offline") || msg.contains("interrupted") || msg.contains("timed out") || msg.contains("could not connect") {
+                errorMessage = "Sin conexión al servidor. Verificá tu internet y que el proyecto de Supabase esté activo."
             } else {
-                errorMessage = "No se pudo iniciar sesión. Intentá de nuevo."
+                errorMessage = "No se pudo iniciar sesión (\(error.localizedDescription))"
             }
         }
     }
@@ -51,6 +52,7 @@ final class AuthViewModel {
         isLoading = true
         defer { isLoading = false }
         errorMessage = nil
+        successMessage = nil
 
         let emailNorm = email.lowercased().trimmingCharacters(in: .whitespaces)
         do {
@@ -58,7 +60,7 @@ final class AuthViewModel {
             // Si Supabase creó sesión activa → SessionStore detecta .signedIn → navega a main
             // Si no hay sesión → confirmación de email requerida → informamos al usuario
             if !supabase.isSessionActive {
-                errorMessage = "Cuenta creada. Revisá tu email para confirmarla antes de iniciar sesión."
+                successMessage = "Cuenta creada. Revisá tu email para confirmarla antes de iniciar sesión."
             }
         } catch {
             let msg = error.localizedDescription.lowercased()
@@ -66,8 +68,10 @@ final class AuthViewModel {
                 errorMessage = "Ya existe una cuenta con ese email"
             } else if msg.contains("password") && msg.contains("weak") {
                 errorMessage = "La contraseña es muy débil. Usá al menos 6 caracteres con letras y números."
+            } else if msg.contains("network") || msg.contains("connection") || msg.contains("offline") || msg.contains("interrupted") || msg.contains("timed out") || msg.contains("could not connect") {
+                errorMessage = "Sin conexión al servidor. Verificá tu internet y que el proyecto de Supabase esté activo."
             } else {
-                errorMessage = "No se pudo crear la cuenta. Intentá de nuevo."
+                errorMessage = "No se pudo crear la cuenta (\(error.localizedDescription))"
             }
         }
     }

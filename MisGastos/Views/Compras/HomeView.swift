@@ -3,12 +3,14 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var compras: [Compra]
+    // Sin predicate fijo: el uid se lee reactivamente dentro de body via session.
+    // Predicate en init() era frágil — capturaba el uid en el momento de creación
+    // del view y no se actualizaba si el uid cambiaba (p.ej. sesión cargada tarde).
+    @Query(sort: \Compra.fecha, order: .reverse) private var todasLasCompras: [Compra]
 
-    // ── CORRECCIÓN: @State para que SwiftUI observe los cambios del store ──
-    @State private var store = UserScopedStorage.shared
+    @State private var store   = UserScopedStorage.shared
+    @State private var session = SessionStore.shared  // @Observable → SwiftUI re-renderiza cuando currentUserID cambia
 
-    // Datos con scope de usuario — ahora reactivos gracias a @Observable
     private var nombre: String          { store.nombre.isEmpty ? "Usuario" : store.nombre }
     private var presupuestoActivo: Bool { store.presupuestoActivo }
     private var presupuesto: Double     { store.presupuestoMensual }
@@ -19,15 +21,11 @@ struct HomeView: View {
 
     private var cal: Calendar { .current }
 
-    // Filtra por usuario en SwiftData (predicate) para evitar el race condition
-    // de comparar userId en un computed property con @Observable.
-    init() {
-        let uid = SessionStore.shared.currentUserID
-        _compras = Query(
-            filter: #Predicate<Compra> { compra in compra.userId == uid },
-            sort: \Compra.fecha,
-            order: .reverse
-        )
+    // Filtro reactivo: se re-evalúa automáticamente cuando session.currentUserID cambia.
+    private var compras: [Compra] {
+        let uid = session.currentUserID
+        guard !uid.isEmpty else { return [] }
+        return todasLasCompras.filter { $0.userId == uid }
     }
 
     private var comprasEsteMes: [Compra] {

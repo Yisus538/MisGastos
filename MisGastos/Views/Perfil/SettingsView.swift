@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var showApariencia   = false
     @State private var showMoneda       = false
     @State private var showIdioma       = false
+    @State private var showMembresia    = false
     @State private var showRestartAlert = false
     @State private var presupuestoStr   = ""
     @Environment(\.dismiss) private var dismiss
@@ -71,6 +72,10 @@ struct SettingsView: View {
                             .tracking(-1)
                             .padding(.top, 10)
                             .padding(.bottom, 20)
+
+                        // Membresía
+                        membresiaRow
+                            .padding(.bottom, 22)
 
                         // General
                         sectionLabel("General")
@@ -202,6 +207,7 @@ struct SettingsView: View {
                     : String(format: "%.2f", val)
             }
         }
+        .sheet(isPresented: $showMembresia)  { MembresiaView() }
         .sheet(isPresented: $showApariencia) { AparienciaSheet() }
         .confirmationDialog("Seleccioná la moneda", isPresented: $showMoneda, titleVisibility: .visible) {
             ForEach(monedas, id: \.code) { m in
@@ -228,6 +234,51 @@ struct SettingsView: View {
     }
 
     // MARK: - Row builders
+
+    // ── Fila de membresía (tarjeta verde) ──────────────────────────────────
+    @ViewBuilder
+    private var membresiaRow: some View {
+        Button { showMembresia = true } label: {
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.white.opacity(0.22))
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 38, height: 38)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(store.planActivo == "pro" ? "Súper Ahorro+ Pro" : "Súper Ahorro+")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
+                    Text(renovacionLabel)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(LinearGradient.saGreen, in: RoundedRectangle(cornerRadius: 16))
+            .shadow(color: Color.saGreen.opacity(0.35), radius: 8, y: 4)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var renovacionLabel: String {
+        if store.planActivo == "pro", let fecha = store.fechaRenovacion {
+            let str = fecha.formatted(.dateTime.day().month(.abbreviated))
+            return "Renovación: \(str) · Gestionar plan"
+        }
+        return "Gratis · Mejorar a Pro"
+    }
 
     @ViewBuilder
     private func sectionLabel(_ text: String) -> some View {

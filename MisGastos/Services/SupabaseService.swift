@@ -142,6 +142,19 @@ final class SupabaseService {
         try await client.from("compras").insert(remota).execute()
     }
 
+    // Upsert: inserta si no existe, actualiza si ya estaba. Usado por SyncService
+    // para evitar el error de clave duplicada cuando isSynced quedó false en disco
+    // pero la compra ya llegó a Supabase en un intento anterior.
+    func upsertCompra(id: UUID, fecha: Date, supermercado: String, total: Double, metodoPago: String, ticketURL: String?) async throws {
+        guard let userID = currentUserID else { throw SAError.noSession }
+        let remota = CompraRemota(
+            id: id, userId: userID, fecha: fecha,
+            supermercado: supermercado, total: total,
+            metodoPago: metodoPago, ticketUrl: ticketURL
+        )
+        try await client.from("compras").upsert(remota, onConflict: "id").execute()
+    }
+
     func actualizarCompra(id: UUID, supermercado: String, fecha: Date, total: Double, metodoPago: String, ticketURL: String?) async throws {
         guard let userID = currentUserID else { throw SAError.noSession }
 
@@ -201,6 +214,15 @@ final class SupabaseService {
             precio: precio
         )
         try await client.from("productos").insert(remoto).execute()
+    }
+
+    func upsertProducto(id: UUID, compraID: UUID, nombre: String, descripcion: String, codigo: String, precio: Double) async throws {
+        let remoto = ProductoRemoto(
+            id: id, compraId: compraID,
+            nombre: nombre, descripcion: descripcion,
+            codigo: codigo, precio: precio
+        )
+        try await client.from("productos").upsert(remoto, onConflict: "id").execute()
     }
 
     func actualizarProducto(id: UUID, compraID: UUID, nombre: String, descripcion: String, codigo: String, precio: Double) async throws {

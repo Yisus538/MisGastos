@@ -84,7 +84,8 @@ struct SplashView: View {
                        AparienciaMode(rawValue: remote) != nil {
                         aparienciaRaw = remote
                     }
-                    // Primero subir pendientes locales, luego bajar lo que falta de Supabase.
+                    // Sincronizar membresía y datos de compras
+                    await MembresiaService.shared.sincronizar()
                     await SyncService.shared.sincronizarPendientes(context: modelContext)
                     await SyncService.shared.pullDesdeSupabase(context: modelContext)
                 }

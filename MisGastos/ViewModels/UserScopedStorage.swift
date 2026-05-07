@@ -37,6 +37,11 @@ final class UserScopedStorage {
     private(set) var languageCode:         String = "es"
     // Tasa de cambio: cuántas unidades de currencyCode vale 1 ARS
     private(set) var exchangeRate:         Double = 1.0
+    // Plan de membresía
+    private(set) var planActivo:           String = "gratis"  // "gratis" | "pro"
+    private(set) var billingCyclePlan:     String = "mensual"
+    private(set) var precioPlan:           Double = 0
+    private(set) var fechaRenovacion:      Date?  = nil
 
     // ── Sincronización UserDefaults → estado en memoria ───────────────────
     // Llamar: tras login, tras logout, y dentro de cada set().
@@ -53,6 +58,23 @@ final class UserScopedStorage {
            let rates = try? JSONDecoder().decode([String: Double].self, from: data) {
             exchangeRate = rates[currencyCode] ?? 1.0
         }
+        planActivo       = UserDefaults.standard.string(forKey: "app_planActivo")    ?? "gratis"
+        billingCyclePlan = UserDefaults.standard.string(forKey: "app_billingCycle")  ?? "mensual"
+        precioPlan       = UserDefaults.standard.double(forKey: "app_precioPlan")
+        let ts           = UserDefaults.standard.double(forKey: "app_fechaRenovacion")
+        fechaRenovacion  = ts > 0 ? Date(timeIntervalSince1970: ts) : nil
+    }
+
+    func actualizarPlan(plan: String, billingCycle: String, precio: Double, fechaRenovacion: Date?) {
+        UserDefaults.standard.set(plan,         forKey: "app_planActivo")
+        UserDefaults.standard.set(billingCycle, forKey: "app_billingCycle")
+        UserDefaults.standard.set(precio,       forKey: "app_precioPlan")
+        if let f = fechaRenovacion {
+            UserDefaults.standard.set(f.timeIntervalSince1970, forKey: "app_fechaRenovacion")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "app_fechaRenovacion")
+        }
+        reload()
     }
 
     // Convierte un monto guardado en ARS a la moneda seleccionada
