@@ -10,13 +10,25 @@ final class SyncService {
     // en SwiftData local. Cubre fresh install, nuevo dispositivo y sesión
     // iniciada en otro lugar. Seguro llamar en cada arranque; no duplica datos.
     func pullDesdeSupabase(context: ModelContext) async {
-        guard SupabaseService.shared.isSessionActive else { return }
+        guard SupabaseService.shared.isSessionActive,
+              let currentUUID = SupabaseService.shared.currentUserID else { return }
+        let uidStr = currentUUID.uuidString
 
         do {
+            // Fetch local antes de la red para poder migrar userId vacíos
+            let locales = (try? context.fetch(FetchDescriptor<Compra>())) ?? []
+
+            // Migración: compras creadas antes de que existiera el campo userId
+            // quedan con "" tras la auto-migration de SwiftData. Se asigna el UID actual.
+            let sinUserId = locales.filter { $0.userId.isEmpty || $0.userId == "unknown" }
+            if !sinUserId.isEmpty {
+                sinUserId.forEach { $0.userId = uidStr }
+                try? context.save()
+            }
+
             let remotas = try await SupabaseService.shared.fetchCompras()
             guard !remotas.isEmpty else { return }
 
-            let locales = (try? context.fetch(FetchDescriptor<Compra>())) ?? []
             let idsLocales = Set(locales.map { $0.id })
             let faltantes = remotas.filter { !idsLocales.contains($0.id) }
             guard !faltantes.isEmpty else { return }
@@ -26,7 +38,6 @@ final class SyncService {
             )
             let productosPorCompra = Dictionary(grouping: productosDTOs, by: { $0.compraId })
 
-            let currentUID = SessionStore.shared.currentUserID
             for dto in faltantes {
                 let compra = Compra(
                     fecha: dto.fecha,
@@ -35,7 +46,7 @@ final class SyncService {
                     metodoPago: dto.metodoPago
                 )
                 compra.id = dto.id
-                if !currentUID.isEmpty { compra.userId = currentUID }
+                compra.userId = uidStr
                 compra.ticketURL = dto.ticketURL
                 compra.isSynced = true
                 context.insert(compra)

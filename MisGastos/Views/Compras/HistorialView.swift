@@ -22,16 +22,18 @@ enum OrdenHistorial: String, CaseIterable {
 // MARK: - HistorialView
 
 struct HistorialView: View {
-    @Query private var todas: [Compra]
-    @State private var store = UserScopedStorage.shared
+    // Sin predicate fijo: filtra en memoria de forma reactiva igual que HomeView.
+    // Un predicate en init() capturaba el uid en ese momento y no se actualizaba
+    // si authStateChanges disparaba después (compras invisibles hasta reiniciar).
+    @Query(sort: \Compra.fecha, order: .reverse) private var todas: [Compra]
+    @State private var session = SessionStore.shared
+    @State private var store   = UserScopedStorage.shared
 
-    init() {
-        let uid = SessionStore.shared.currentUserID
-        _todas = Query(
-            filter: #Predicate<Compra> { compra in compra.userId == uid },
-            sort: \Compra.fecha,
-            order: .reverse
-        )
+    // Compras del usuario activo, reactivas al cambio de sesión
+    private var todasDelUsuario: [Compra] {
+        let uid = session.currentUserID
+        guard !uid.isEmpty else { return [] }
+        return todas.filter { $0.userId == uid }
     }
 
     @State private var busqueda      = ""
@@ -53,7 +55,7 @@ struct HistorialView: View {
     }
 
     private var supermercados: [String] {
-        ["Todas"] + Array(Set(todas.map { $0.supermercado })).sorted()
+        ["Todas"] + Array(Set(todasDelUsuario.map { $0.supermercado })).sorted()
     }
 
     private var filtradas: [Compra] {
@@ -61,7 +63,7 @@ struct HistorialView: View {
         let minVal = Double(montoMin.replacingOccurrences(of: ",", with: "."))
         let maxVal = Double(montoMax.replacingOccurrences(of: ",", with: "."))
 
-        return todas.filter { c in
+        return todasDelUsuario.filter { c in
             let matchSuper  = filtroSuper == "Todas" || c.supermercado == filtroSuper
             let matchSearch = busqueda.isEmpty ||
                 c.supermercado.localizedCaseInsensitiveContains(busqueda) ||
@@ -158,7 +160,7 @@ struct HistorialView: View {
                             }
                         }
 
-                        if !todas.isEmpty {
+                        if !todasDelUsuario.isEmpty {
                             Button { showExportSheet = true } label: {
                                 Image(systemName: "square.and.arrow.up")
                                     .font(.system(size: 15, weight: .medium))
@@ -227,7 +229,7 @@ struct HistorialView: View {
                     }
 
                     VStack(spacing: 20) {
-                        if todas.isEmpty {
+                        if todasDelUsuario.isEmpty {
                             ContentUnavailableView {
                                 Label("Sin compras", systemImage: "cart")
                             } description: {
@@ -266,7 +268,7 @@ struct HistorialView: View {
             )
         }
         .sheet(isPresented: $showExportSheet) {
-            ExportSheet(compras: todas) { url in
+            ExportSheet(compras: todasDelUsuario) { url in
                 shareItems = [url]
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { showShareSheet = true }
             }

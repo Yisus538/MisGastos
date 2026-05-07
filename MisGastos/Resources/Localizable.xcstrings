@@ -608,9 +608,6 @@
     "Habilitá el permiso en Configuración → Súper Ahorro → Cámara" : {
 
     },
-    "Hello, world!" : {
-
-    },
     "Historial" : {
 
     },
@@ -754,6 +751,9 @@
       }
     },
     "Idioma actualizado" : {
+
+    },
+    "Imagen no disponible" : {
 
     },
     "Ingresá tu correo y te enviamos instrucciones para recuperar tu cuenta." : {

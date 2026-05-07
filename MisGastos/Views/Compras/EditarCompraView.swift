@@ -11,6 +11,7 @@ struct EditarCompraView: View {
     @State private var fecha: Date
     @State private var showStorePicker = false
     @State private var showPaymentPicker = false
+    @State private var isGuardando = false
 
     init(compra: Compra) {
         self._compra = Bindable(compra)
@@ -47,8 +48,8 @@ struct EditarCompraView: View {
 
                     Button("Guardar") { guardar() }
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(canSave ? Color.saGreen : Color.saLabel4)
-                        .disabled(!canSave)
+                        .foregroundStyle(canSave && !isGuardando ? Color.saGreen : Color.saLabel4)
+                        .disabled(!canSave || isGuardando)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 56)
@@ -177,7 +178,9 @@ struct EditarCompraView: View {
     }
 
     private func guardar() {
-        guard let total = Double(totalStr.replacingOccurrences(of: ",", with: ".")) else { return }
+        guard !isGuardando,
+              let total = Double(totalStr.replacingOccurrences(of: ",", with: ".")) else { return }
+        isGuardando = true
         compra.supermercado = supermercado
         compra.total = total
         compra.metodoPago = metodoPago

@@ -7,11 +7,13 @@ struct EditarPerfilView: View {
     // ── CORRECCIÓN: @State para que SwiftUI observe el store y propague cambios ──
     @State private var store = UserScopedStorage.shared
 
-    @State private var nombreEdit     = ""
-    @State private var emailEdit      = ""
-    @State private var photoItem:     PhotosPickerItem?
-    @State private var isSaving       = false
-    @State private var isLoading      = false
+    @State private var nombreEdit       = ""
+    @State private var emailEdit        = ""
+    @State private var photoItem:       PhotosPickerItem?
+    @State private var isSaving         = false
+    @State private var isLoading        = false
+    @State private var isLoadingPhoto   = false
+    @State private var didChangePhoto   = false
     @State private var avatarDataLocal: Data = Data()
 
     private var initials: String {
@@ -84,10 +86,10 @@ struct EditarPerfilView: View {
                             .opacity(0.55)
                     }
 
-                    SAButton(title: "Guardar cambios", isLoading: isSaving) {
+                    SAButton(title: "Guardar cambios", isLoading: isSaving || isLoadingPhoto) {
                         guardar()
                     }
-                    .disabled(nombreEdit.isEmpty || isSaving)
+                    .disabled(nombreEdit.isEmpty || isSaving || isLoadingPhoto)
                     .padding(.top, 24)
                     .padding(.bottom, 40)
                 }
@@ -95,17 +97,23 @@ struct EditarPerfilView: View {
             }
         }
         .task {
-            // Carga datos actuales con scope de usuario
             nombreEdit      = store.nombre
             emailEdit       = store.email
             avatarDataLocal = store.avatarData
 
             isLoading = true
-            if let perfil = try? await SupabaseService.shared.fetchPerfil(),
-               !perfil.nombre.isEmpty {
+            if let perfil = try? await SupabaseService.shared.fetchPerfil(), !perfil.nombre.isEmpty {
                 nombreEdit = perfil.nombre
             }
             isLoading = false
+
+            // Descarga el avatar desde Supabase Storage si no está en caché local
+            if avatarDataLocal.isEmpty {
+                if let data = await SupabaseService.shared.fetchAvatarData() {
+                    avatarDataLocal = data
+                    store.set(data, for: "avatarData")
+                }
+            }
         }
         .onChange(of: photoItem) { _, item in
             Task { await cargarFoto(item) }
@@ -142,27 +150,34 @@ struct EditarPerfilView: View {
     // MARK: - Actions
 
     private func cargarFoto(_ item: PhotosPickerItem?) async {
-        guard let item,
-              let data = try? await item.loadTransferable(type: Data.self),
+        guard let item else { return }
+        isLoadingPhoto = true
+        defer { isLoadingPhoto = false }
+        guard let data = try? await item.loadTransferable(type: Data.self),
               let original = UIImage(data: data),
               let compressed = comprimirAvatar(original) else { return }
-        await MainActor.run { avatarDataLocal = compressed }
+        avatarDataLocal = compressed
+        didChangePhoto = true
     }
 
     private func guardar() {
         let nombreFinal = nombreEdit.trimmingCharacters(in: .whitespaces)
-        guard !nombreFinal.isEmpty else { return }
+        guard !nombreFinal.isEmpty, !isSaving else { return }
 
-        // ── CORRECCIÓN: store.set() actualiza UserDefaults + notifica observers ──
-        // PerfilView y HomeView se re-renderizan automáticamente al volver.
         store.set(nombreFinal, for: "usuarioNombre")
         if !avatarDataLocal.isEmpty {
             store.set(avatarDataLocal, for: "avatarData")
         }
 
         isSaving = true
+        let snapData       = avatarDataLocal
+        let snapDidChange  = didChangePhoto
         Task {
-            try? await SupabaseService.shared.guardarPerfil(nombre: nombreFinal)
+            var avatarURL: String? = nil
+            if snapDidChange && !snapData.isEmpty {
+                avatarURL = try? await SupabaseService.shared.subirAvatar(snapData)
+            }
+            try? await SupabaseService.shared.guardarPerfil(nombre: nombreFinal, avatarURL: avatarURL)
             isSaving = false
             dismiss()
         }

@@ -64,6 +64,21 @@ struct NuevoProductoView: View {
         modelContext.insert(producto)
         compra.productos.append(producto)
         compra.total += precio
+        try? modelContext.save()
+
+        let pid = producto.id
+        let cid = compra.id
+        let pNombre = nombre
+        let pDesc = descripcion
+        let pCodigo = codigo
+        Task {
+            try? await SupabaseService.shared.crearProducto(
+                id: pid, compraID: cid,
+                nombre: pNombre, descripcion: pDesc,
+                codigo: pCodigo, precio: precio
+            )
+        }
+
         dismiss()
     }
 }

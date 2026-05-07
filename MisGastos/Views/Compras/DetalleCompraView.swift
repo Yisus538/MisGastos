@@ -188,6 +188,20 @@ struct DetalleCompraView: View {
                                 .frame(maxHeight: 200)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                                 .padding(16)
+                        case .failure:
+                            // URL firmada vencida (1h) → fallback a imagen local si existe
+                            if let data = compra.imagenTicket, let img = UIImage(data: data) {
+                                Image(uiImage: img)
+                                    .resizable().scaledToFit()
+                                    .frame(maxHeight: 200)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    .padding(16)
+                            } else {
+                                Label("Imagen no disponible", systemImage: "photo.slash")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Color.saLabel3)
+                                    .padding(20)
+                            }
                         default:
                             ProgressView().padding(20)
                         }

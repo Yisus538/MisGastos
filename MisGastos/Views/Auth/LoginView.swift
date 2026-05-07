@@ -1,9 +1,10 @@
 import SwiftUI
 
 struct LoginView: View {
-    @State private var viewModel = AuthViewModel()
-    @State private var showRegister = false
-    @State private var showForgot = false
+    @State private var viewModel        = AuthViewModel()
+    @State private var showRegister     = false
+    @State private var showForgot       = false
+    @State private var didTryBiometric  = false
     @AppStorage("usuarioEmail") private var usuarioEmail: String = ""
 
     private let biometric = BiometricService.shared
@@ -136,6 +137,19 @@ struct LoginView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .toolbarColorScheme(.light, for: .navigationBar)
+            .task {
+                guard showBiometric, !didTryBiometric else { return }
+                didTryBiometric = true
+                // Pequeño delay para que la UI termine de aparecer antes del diálogo del sistema
+                try? await Task.sleep(for: .milliseconds(600))
+                let ok = await biometric.authenticate(reason: "Accedé a Súper Ahorro")
+                if ok {
+                    await SupabaseService.shared.restaurarSesion()
+                    if !SupabaseService.shared.isSessionActive {
+                        viewModel.errorMessage = "Tu sesión expiró. Iniciá sesión con tu contraseña."
+                    }
+                }
+            }
             .sheet(isPresented: $showRegister) { RegisterView() }
             .sheet(isPresented: $showForgot) { ForgotPasswordView() }
         }

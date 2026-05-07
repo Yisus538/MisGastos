@@ -27,10 +27,12 @@ final class SessionStore {
                         let nombre: String
                         if case .string(let n) = user.userMetadata["nombre"] { nombre = n }
                         else { nombre = email }
+                        // Clave sin scope: usada por LoginView para detectar si hay usuario previo
+                        // y ofrecer/disparar Face ID / Touch ID automáticamente.
+                        UserDefaults.standard.set(email, forKey: "usuarioEmail")
                         // Cachea datos de display con scope de usuario
                         UserDefaults.standard.set(email,  forKey: "usuarioEmail_\(user.id.uuidString)")
                         UserDefaults.standard.set(nombre, forKey: "usuarioNombre_\(user.id.uuidString)")
-                        // ── CORRECCIÓN: notificar a todos los observers del store ──
                         UserScopedStorage.shared.reload()
                     }
 

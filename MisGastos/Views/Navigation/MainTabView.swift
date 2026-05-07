@@ -1,6 +1,8 @@
 import SwiftUI
+import SwiftData
 
 struct MainTabView: View {
+    @Environment(\.modelContext) private var modelContext
     @State private var selectedTab = 0
 
     var body: some View {
@@ -26,5 +28,12 @@ struct MainTabView: View {
                 .tabItem { Label("Perfil", systemImage: "person.fill") }
         }
         .tint(Color.saGreen)
+        .task {
+            // Sincroniza datos al aparecer la UI autenticada.
+            // Cubre login manual (donde SplashView ya corrió sin sesión activa)
+            // y sesión restaurada desde Keychain con token expirado.
+            await SyncService.shared.sincronizarPendientes(context: modelContext)
+            await SyncService.shared.pullDesdeSupabase(context: modelContext)
+        }
     }
 }

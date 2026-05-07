@@ -3,26 +3,21 @@ import SwiftData
 
 struct PerfilView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var compras: [Compra]
+    @Query(sort: \Compra.fecha, order: .reverse) private var todasCompras: [Compra]
 
     @State private var showSettings = false
     @State private var showEditar   = false
-
-    // ── CORRECCIÓN: @State para que SwiftUI observe los cambios del store ──
+    @State private var session = SessionStore.shared
     @State private var store = UserScopedStorage.shared
 
-    // Datos del usuario — reactivos gracias a @Observable en UserScopedStorage
     private var nombre:     String { store.nombre }
     private var email:      String { store.email }
     private var avatarData: Data   { store.avatarData }
 
-    init() {
-        let uid = SessionStore.shared.currentUserID
-        _compras = Query(
-            filter: #Predicate<Compra> { compra in compra.userId == uid },
-            sort: \Compra.fecha,
-            order: .reverse
-        )
+    private var compras: [Compra] {
+        let uid = session.currentUserID
+        guard !uid.isEmpty else { return [] }
+        return todasCompras.filter { $0.userId == uid }
     }
 
     private var totalGastado:          Double { compras.reduce(0) { $0 + $1.total } }
@@ -233,9 +228,26 @@ struct PerfilView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbarColorScheme(.dark, for: .navigationBar)
+        .task {
+            store.reload()
+            let localData = store.avatarData
+            if localData.isEmpty {
+                // Sin caché local: intentar descargar desde Supabase Storage
+                if let data = await SupabaseService.shared.fetchAvatarData() {
+                    store.set(data, for: "avatarData")
+                }
+            } else {
+                // Hay caché local: migrar a Supabase si avatar_url todavía es NULL
+                if let perfil = try? await SupabaseService.shared.fetchPerfil(),
+                   perfil.avatarURL == nil,
+                   let url = try? await SupabaseService.shared.subirAvatar(localData) {
+                    let nombre = store.nombre.isEmpty ? perfil.nombre : store.nombre
+                    try? await SupabaseService.shared.guardarPerfil(nombre: nombre, avatarURL: url)
+                }
+            }
+        }
         .sheet(isPresented: $showSettings) { SettingsView() }
-        // ── CORRECCIÓN: recargar datos al volver de EditarPerfilView ──
-        .sheet(isPresented: $showEditar) {
+        .sheet(isPresented: $showEditar, onDismiss: { store.reload() }) {
             EditarPerfilView()
         }
     }

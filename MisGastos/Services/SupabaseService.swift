@@ -1,15 +1,3 @@
-// =====================================================
-// SETUP REQUERIDO (hacer antes de compilar):
-// 1. Xcode → File → Add Package Dependencies
-//    URL: https://github.com/supabase/supabase-swift
-//    Versión: Up to Next Major desde 2.0.0
-// 2. Crear proyecto en supabase.com (plan gratuito)
-// 3. Ejecutar Resources/supabase_schema.sql en el SQL Editor
-// 4. Storage → New bucket: "tickets-usuarios" (privado)
-// 5. Copiar MisGastos/Secrets.xcconfig.example → Secrets.xcconfig
-//    y completar SUPABASE_URL y SUPABASE_ANON_KEY
-// =====================================================
-
 import Foundation
 import Supabase
 
@@ -271,6 +259,28 @@ final class SupabaseService {
         return signedURL.absoluteString
     }
 
+    // MARK: - Storage de avatares
+
+    func subirAvatar(_ data: Data) async throws -> String {
+        guard let userID = currentUserID else { throw SAError.noSession }
+        let path = "\(userID.uuidString)/avatar.jpg"
+        try await client.storage
+            .from("avatares-usuarios")
+            .upload(path: path, file: data, options: FileOptions(contentType: "image/jpeg", upsert: true))
+        let signedURL = try await client.storage
+            .from("avatares-usuarios")
+            .createSignedURL(path: path, expiresIn: 60 * 60 * 24 * 365)
+        return signedURL.absoluteString
+    }
+
+    func fetchAvatarData() async -> Data? {
+        guard let userID = currentUserID else { return nil }
+        let path = "\(userID.uuidString)/avatar.jpg"
+        return try? await client.storage
+            .from("avatares-usuarios")
+            .download(path: path)
+    }
+
     // MARK: - Preferencias de perfil
 
     func guardarApariencia(_ mode: String) async throws {
@@ -294,26 +304,36 @@ final class SupabaseService {
         return rows.first?.apariencia
     }
 
-    func fetchPerfil() async throws -> (nombre: String, telefono: String) {
+    func fetchPerfil() async throws -> (nombre: String, telefono: String, avatarURL: String?) {
         guard let userID = currentUserID else { throw SAError.noSession }
-        struct Row: Decodable { let nombre: String; let telefono: String? }
+        struct Row: Decodable {
+            let nombre: String
+            let telefono: String?
+            let avatar_url: String?
+        }
         let rows: [Row] = try await client
             .from("perfiles")
-            .select("nombre, telefono")
+            .select("nombre, telefono, avatar_url")
             .eq("id", value: userID.uuidString)
             .execute()
             .value
         let row = rows.first
-        return (nombre: row?.nombre ?? "", telefono: row?.telefono ?? "")
+        return (nombre: row?.nombre ?? "", telefono: row?.telefono ?? "", avatarURL: row?.avatar_url)
     }
 
-    func guardarPerfil(nombre: String) async throws {
+    func guardarPerfil(nombre: String, avatarURL: String? = nil) async throws {
         guard let userID = currentUserID else { throw SAError.noSession }
-        try await client
-            .from("perfiles")
-            .update(["nombre": nombre])
-            .eq("id", value: userID.uuidString)
-            .execute()
+        if let url = avatarURL {
+            struct Payload: Encodable { let nombre: String; let avatar_url: String }
+            try await client.from("perfiles")
+                .update(Payload(nombre: nombre, avatar_url: url))
+                .eq("id", value: userID.uuidString).execute()
+        } else {
+            struct Payload: Encodable { let nombre: String }
+            try await client.from("perfiles")
+                .update(Payload(nombre: nombre))
+                .eq("id", value: userID.uuidString).execute()
+        }
     }
 
     // MARK: - Supermercados

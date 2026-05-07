@@ -2,17 +2,16 @@ import SwiftUI
 import SwiftData
 
 struct ComparativaView: View {
-    @Query private var compras: [Compra]
+    // Sin predicate fijo: filtra en memoria de forma reactiva igual que HomeView.
+    @Query(sort: \Compra.fecha, order: .reverse) private var todasCompras: [Compra]
+    @State private var session = SessionStore.shared
     @State private var busqueda = ""
-    @State private var store = UserScopedStorage.shared
+    @State private var store   = UserScopedStorage.shared
 
-    init() {
-        let uid = SessionStore.shared.currentUserID
-        _compras = Query(
-            filter: #Predicate<Compra> { compra in compra.userId == uid },
-            sort: \Compra.fecha,
-            order: .reverse
-        )
+    private var compras: [Compra] {
+        let uid = session.currentUserID
+        guard !uid.isEmpty else { return [] }
+        return todasCompras.filter { $0.userId == uid }
     }
 
     // MARK: - Private types
