@@ -1,41 +1,97 @@
+// =============================================================================
+// ComparativaView.swift — Comparativa de precios entre supermercados
+// =============================================================================
+// Rol en la app:
+//   Analiza los productos registrados en todas las compras y agrupa aquellos con
+//   el mismo nombre que aparecen en 2 o más supermercados distintos. Para cada
+//   producto, muestra el precio en cada tienda, indicando el más barato y el más
+//   caro, y calcula el ahorro potencial.
+//   Se navega desde el Tab "Comparar" en `MainTabView`.
+//
+// Equivalente Android:
+//   Un `Fragment` con `RecyclerView` que consume un `StateFlow<List<ComparativaItem>>`
+//   del ViewModel. El procesamiento de datos equivale a queries `GROUP BY producto_nombre`
+//   con `JOIN` a `compras` en Room, o procesamiento en memoria con `.groupBy { }`.
+//
+// Estrategia de agrupación:
+//   1. Iterar todas las compras del usuario.
+//   2. Para cada producto, agregar su precio y supermercado al mapa `[nombre: [entradas]]`.
+//   3. Filtrar solo productos que aparecen en 2+ supermercados distintos.
+//   4. Para cada supermercado, tomar el precio más reciente (puede haber variaciones).
+//   5. Ordenar los precios de menor a mayor y calcular el ahorro.
+//
+// Datos locales vs. tiempo real:
+//   Los datos provienen de SwiftData local (compras registradas por el usuario).
+//   No es un comparador de precios en tiempo real — muestra los precios que el
+//   usuario pagó en sus propias compras, lo que es más relevante para su contexto.
+// =============================================================================
+
 import SwiftUI
 import SwiftData
 
+/// Pantalla de comparativa de precios entre supermercados.
+///
+/// Equivalente Android: `ComparativaFragment` con `RecyclerView` de cards por producto.
 struct ComparativaView: View {
-    // Sin predicate fijo: filtra en memoria de forma reactiva igual que HomeView.
-    @Query(sort: \Compra.fecha, order: .reverse) private var todasCompras: [Compra]
-    @State private var session = SessionStore.shared
-    @State private var busqueda = ""
-    @State private var store   = UserScopedStorage.shared
 
+    // MARK: - Fuentes de datos
+
+    /// Todas las compras de SwiftData — filtro de userId se aplica en `compras`.
+    @Query(sort: \Compra.fecha, order: .reverse) private var todasCompras: [Compra]
+
+    /// Estado de sesión para obtener el userId del usuario activo.
+    @State private var session = SessionStore.shared
+
+    /// Preferencias de moneda para convertir y formatear precios.
+    @State private var store = UserScopedStorage.shared
+
+    // MARK: - Estado de UI
+
+    /// Texto de búsqueda para filtrar productos por nombre.
+    @State private var busqueda = ""
+
+    // MARK: - Compras del usuario
+
+    /// Compras del usuario activo — filtradas reactivamente.
     private var compras: [Compra] {
         let uid = session.currentUserID
         guard !uid.isEmpty else { return [] }
         return todasCompras.filter { $0.userId == uid }
     }
 
-    // MARK: - Private types
+    // MARK: - Tipos de datos internos
 
+    /// Precio de un producto en un supermercado específico.
     private struct PrecioEnSuper: Identifiable {
         let id = UUID()
         let supermercado: String
         let precio: Double
-        let fecha: Date
+        let fecha: Date    // Fecha de la compra (para "precio más reciente")
     }
 
+    /// Item de comparativa: un producto con sus precios en distintos supermercados.
     private struct ItemComparativa: Identifiable {
         let id = UUID()
         let nombre: String
-        let precios: [PrecioEnSuper]  // ordenados de menor a mayor precio
-        var minPrecio: Double { precios.first?.precio ?? 0 }
-        var maxPrecio: Double { precios.last?.precio ?? 0 }
-        var ahorro: Double { maxPrecio - minPrecio }
+        let precios: [PrecioEnSuper]  // Ordenados de menor a mayor precio
+
+        var minPrecio: Double      { precios.first?.precio ?? 0 }
+        var maxPrecio: Double      { precios.last?.precio ?? 0 }
+        var ahorro: Double         { maxPrecio - minPrecio }          // Diferencia entre más caro y más barato
         var superMasBarato: String { precios.first?.supermercado ?? "" }
     }
 
-    // MARK: - Computed data
+    // MARK: - Datos computados
 
+    /// Lista de comparativas calculadas desde las compras del usuario.
+    ///
+    /// Algoritmo:
+    /// 1. Construir mapa `[nombreProducto: [(super, precio, fecha)]]`.
+    /// 2. Filtrar solo productos en 2+ supermercados distintos.
+    /// 3. Para cada supermercado, tomar el registro más reciente.
+    /// 4. Ordenar por mayor ahorro potencial.
     private var comparativas: [ItemComparativa] {
+        // Mapa: nombre normalizado → lista de (supermercado, precio, fecha)
         var map: [String: [(super: String, precio: Double, fecha: Date)]] = [:]
         for compra in compras {
             for producto in compra.productos {
@@ -43,19 +99,25 @@ struct ComparativaView: View {
                 map[key, default: []].append((compra.supermercado, producto.precio, compra.fecha))
             }
         }
+
         return map.compactMap { nombre, entradas -> ItemComparativa? in
+            // Solo incluir si aparece en 2 o más supermercados distintos
             guard Set(entradas.map(\.super)).count >= 2 else { return nil }
-            // Último precio registrado por supermercado
+
+            // Tomar el último precio registrado por supermercado (precio más reciente)
             var latest: [String: (super: String, precio: Double, fecha: Date)] = [:]
             for e in entradas.sorted(by: { $0.fecha < $1.fecha }) { latest[e.super] = e }
+
+            // Convertir a PrecioEnSuper y ordenar de menor a mayor precio
             let precios = latest.values
                 .map { PrecioEnSuper(supermercado: $0.super, precio: $0.precio, fecha: $0.fecha) }
                 .sorted { $0.precio < $1.precio }
             return ItemComparativa(nombre: nombre.capitalized, precios: precios)
         }
-        .sorted { $0.ahorro > $1.ahorro }
+        .sorted { $0.ahorro > $1.ahorro }   // Los productos con más ahorro potencial primero
     }
 
+    /// Comparativas filtradas por búsqueda de texto.
     private var filtradas: [ItemComparativa] {
         busqueda.isEmpty ? comparativas
             : comparativas.filter { $0.nombre.localizedCaseInsensitiveContains(busqueda) }
@@ -67,14 +129,14 @@ struct ComparativaView: View {
             .first ?? 50
     }
 
-    // MARK: - Body
+    // MARK: - Vista principal
 
     var body: some View {
         ZStack {
             Color.saBg.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
+                // Encabezado de la pantalla
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Comparativa")
                         .font(.system(size: 32, weight: .bold))
@@ -89,7 +151,7 @@ struct ComparativaView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
 
-                // Search bar
+                // Barra de búsqueda por nombre de producto
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(Color.saLabel3)
@@ -110,8 +172,9 @@ struct ComparativaView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
 
-                // Content
+                // Contenido principal según el estado de los datos
                 if comparativas.isEmpty {
+                    // Estado vacío: no hay suficientes datos para comparar
                     ContentUnavailableView {
                         Label("Sin comparativas", systemImage: "scalemass")
                     } description: {
@@ -119,17 +182,19 @@ struct ComparativaView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if filtradas.isEmpty {
+                    // Sin resultados para la búsqueda actual
                     ContentUnavailableView.search(text: busqueda)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 0) {
-                            // Stats pill
+                            // Card de estadísticas globales (solo cuando no hay búsqueda activa)
                             if busqueda.isEmpty {
                                 statsHeader
                                     .padding(.bottom, 16)
                             }
 
+                            // Lista de cards de comparativa por producto
                             VStack(spacing: 12) {
                                 ForEach(filtradas) { item in
                                     comparativaCard(item)
@@ -146,8 +211,9 @@ struct ComparativaView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    // MARK: - Subviews
+    // MARK: - Card de estadísticas globales
 
+    /// Muestra el total de productos comparados, tiendas únicas y mayor ahorro.
     private var statsHeader: some View {
         SACard(padding: 14) {
             HStack(spacing: 0) {
@@ -175,6 +241,7 @@ struct ComparativaView: View {
         }
     }
 
+    /// Celda de estadística individual con ícono, valor y etiqueta multilínea.
     @ViewBuilder
     private func statCell(icon: String, color: Color, value: String, label: String) -> some View {
         VStack(spacing: 4) {
@@ -194,17 +261,26 @@ struct ComparativaView: View {
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: - Card de comparativa por producto
+
+    /// Card que muestra los precios de un producto en cada supermercado.
+    ///
+    /// - Header: nombre del producto + badge de ahorro.
+    /// - Filas: precio por supermercado, ordenados de más barato a más caro.
+    ///   El más barato se marca en verde ("MÁS BARATO"), el más caro en rojo ("MÁS CARO").
+    /// - Footer: recomendación de compra con el ahorro calculado.
     @ViewBuilder
     private func comparativaCard(_ item: ItemComparativa) -> some View {
         SACard(padding: 0) {
             VStack(spacing: 0) {
-                // Product name + savings badge
+                // Encabezado: nombre del producto y badge de ahorro potencial
                 HStack {
                     Text(item.nombre)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Color.saLabel)
                         .tracking(-0.3)
                     Spacer()
+                    // Badge verde con el ahorro en moneda
                     if item.ahorro > 0 {
                         Text("−" + store.convert(item.ahorro).formatted(.currency(code: store.currencyCode)))
                             .font(.system(size: 12, weight: .semibold))
@@ -220,18 +296,20 @@ struct ComparativaView: View {
                     Rectangle().fill(Color.saSep).frame(height: 0.5)
                 }
 
-                // Price rows (already sorted cheapest → most expensive)
+                // Filas de precios por supermercado (ordenados de más barato a más caro)
                 ForEach(Array(item.precios.enumerated()), id: \.element.id) { idx, precio in
                     let isCheapest = precio.precio == item.minPrecio
                     let isMostExp  = precio.precio == item.maxPrecio && item.ahorro > 0
 
                     HStack(spacing: 12) {
+                        // Avatar circular del supermercado
                         SAStoreAvatar(name: precio.supermercado, size: 36)
 
                         VStack(alignment: .leading, spacing: 1) {
                             Text(precio.supermercado)
                                 .font(.system(size: 14))
                                 .foregroundStyle(Color.saLabel)
+                            // Fecha de la última compra en este supermercado
                             Text(precio.fecha.formatted(date: .abbreviated, time: .omitted))
                                 .font(.system(size: 11))
                                 .foregroundStyle(Color.saLabel4)
@@ -239,6 +317,7 @@ struct ComparativaView: View {
 
                         Spacer()
 
+                        // Badge de "MÁS BARATO" / "MÁS CARO"
                         if isCheapest {
                             Text("MÁS BARATO")
                                 .font(.system(size: 10, weight: .bold))
@@ -251,12 +330,13 @@ struct ComparativaView: View {
                                 .tracking(0.3)
                         }
 
+                        // Precio en la moneda del usuario — color semáforo
                         Text(store.convert(precio.precio).formatted(.currency(code: store.currencyCode)))
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(
-                                isCheapest ? Color.saGreen
-                                : isMostExp ? Color.saDanger
-                                : Color.saLabel
+                                isCheapest ? Color.saGreen     // Verde: más barato
+                                : isMostExp ? Color.saDanger    // Rojo: más caro
+                                : Color.saLabel                 // Neutral: precio intermedio
                             )
                     }
                     .padding(.horizontal, 16)
@@ -268,7 +348,7 @@ struct ComparativaView: View {
                     }
                 }
 
-                // Footer: recommendation
+                // Footer: recomendación con el supermercado más barato y el ahorro
                 if item.ahorro > 0 {
                     HStack(spacing: 6) {
                         Image(systemName: "lightbulb.fill")

@@ -1,18 +1,76 @@
+// =============================================================================
+// RegisterView.swift — Pantalla de registro de nueva cuenta
+// =============================================================================
+// Rol en la app:
+//   Formulario de registro con nombre, email y contraseña. Incluye un indicador
+//   visual de fortaleza de contraseña y un checkbox de términos y condiciones.
+//   Delega el registro a `AuthViewModel` → `SupabaseService.register()`.
+//
+//   Supabase crea el usuario en su tabla `auth.users` con bcrypt + JWT.
+//   No se guarda ninguna contraseña en SwiftData local.
+//
+// Equivalente Android:
+//   `RegisterActivity` / `RegisterFragment` con:
+//   - `TextInputLayout` con validación en tiempo real.
+//   - Indicador de fortaleza de contraseña personalizado.
+//   - `FirebaseAuth.createUserWithEmailAndPassword()` para el registro.
+//   - O en Compose: `@Composable fun RegisterScreen(viewModel: AuthViewModel)`.
+//
+// Indicador de fortaleza de contraseña:
+//   Se basa únicamente en la longitud (simplificación para el TP).
+//   Una implementación robusta verificaría también:
+//   - Mayúsculas y minúsculas mezcladas.
+//   - Números y caracteres especiales.
+//   - Contraseñas comunes (diccionario).
+//
+// Animación de barras:
+//   `.animation(.easeInOut(duration: 0.2), value: strengthLevel)` hace que
+//   las barras de fortaleza se animen suavemente al cambiar. SwiftUI detecta
+//   el cambio en `strengthLevel` y anima la propiedad `fill` automáticamente.
+//   Equivalente Android: `ValueAnimator` o `animateColorAsState` en Compose.
+// =============================================================================
+
 import SwiftUI
 
+/// Pantalla de registro de nueva cuenta de Súper Ahorro.
+///
+/// Flujo de registro:
+/// 1. Usuario completa nombre + email + contraseña.
+/// 2. Acepta términos y condiciones (requerido para habilitar el botón).
+/// 3. Toca "Crear cuenta" → `viewModel.register()`.
+/// 4. Supabase crea el usuario → JWT guardado en Keychain → `SessionStore` navega a `MainTabView`.
+///
+/// Equivalente Android: `RegisterFragment` con `FirebaseAuth.createUserWithEmailAndPassword()`.
 struct RegisterView: View {
+
+    // MARK: - ViewModel
+
+    /// ViewModel compartido con `LoginView` — maneja el estado de registro.
     @State private var viewModel = AuthViewModel()
+
+    /// Dismisses esta sheet de vuelta a `LoginView`.
     @Environment(\.dismiss) private var dismiss
+
+    // MARK: - Estado de UI
+
+    /// Si el usuario aceptó los términos — el botón de registro está deshabilitado si es `false`.
     @State private var termsAccepted = true
 
+    // MARK: - Indicador de fortaleza de contraseña
+
+    /// Nivel de fortaleza de la contraseña basado en la longitud (0-4).
+    ///
+    /// 0: vacía / 1: débil (<6) / 2: regular (<10) / 3: buena (<14) / 4: segura (14+)
     private var strengthLevel: Int {
         let n = viewModel.password.count
         if n == 0 { return 0 }
-        if n < 6 { return 1 }
+        if n < 6  { return 1 }
         if n < 10 { return 2 }
         if n < 14 { return 3 }
         return 4
     }
+
+    // MARK: - Vista principal
 
     var body: some View {
         ZStack {
@@ -20,7 +78,8 @@ struct RegisterView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Back button
+
+                    // Botón de volver (dismiss la sheet)
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
@@ -32,6 +91,7 @@ struct RegisterView: View {
                     .padding(.top, 56)
                     .padding(.bottom, 24)
 
+                    // Encabezado
                     Text("Creá tu cuenta")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundStyle(Color.saLabel)
@@ -42,36 +102,45 @@ struct RegisterView: View {
                         .padding(.top, 6)
                         .padding(.bottom, 28)
 
-                    // Fields
+                    // Campos del formulario
                     VStack(spacing: 12) {
+                        // Nombre completo — se guarda en user_metadata de Supabase Auth
                         SAField(placeholder: "Nombre completo", text: $viewModel.nombre, icon: "person")
+
+                        // Email — usado como identificador único del usuario en Supabase
                         SAField(placeholder: "Correo electrónico", text: $viewModel.email, icon: "envelope")
                             .textContentType(.emailAddress)
                             .keyboardType(.emailAddress)
                             .textInputAutocapitalization(.never)
+
+                        // Contraseña — mínimo 6 caracteres (limitación de Supabase Auth por defecto)
                         SAField(placeholder: "Creá una contraseña", text: $viewModel.password, icon: "lock", isSecure: true)
                     }
 
-                    // Password strength
+                    // Indicador de fortaleza de contraseña: 4 barras animadas
+                    // Barras llenas (verde) = fortaleza actual; vacías (separador) = nivel no alcanzado
                     HStack(spacing: 4) {
                         ForEach(0..<4, id: \.self) { i in
                             RoundedRectangle(cornerRadius: 2)
                                 .fill(i < strengthLevel ? Color.saGreen : Color.saSep)
                                 .frame(height: 3)
+                                // Animar el cambio de color cuando strengthLevel cambia
                                 .animation(.easeInOut(duration: 0.2), value: strengthLevel)
                         }
                     }
                     .padding(.top, 14)
                     .padding(.horizontal, 2)
 
+                    // Etiqueta textual de fortaleza
                     Text(strengthLabel)
                         .font(.system(size: 12))
                         .foregroundStyle(Color.saLabel3)
                         .padding(.top, 6)
                         .padding(.horizontal, 2)
 
-                    // Terms
+                    // Checkbox de términos y condiciones
                     HStack(alignment: .top, spacing: 10) {
+                        // Checkbox personalizado con checkmark animado
                         ZStack {
                             RoundedRectangle(cornerRadius: 6)
                                 .fill(termsAccepted ? Color.saGreen : Color.saCard)
@@ -90,6 +159,7 @@ struct RegisterView: View {
                         .onTapGesture { termsAccepted.toggle() }
                         .padding(.top, 1)
 
+                        // Texto de términos con partes coloreadas
                         Text("Acepto los ") +
                         Text("Términos").foregroundColor(Color.saGreen) +
                         Text(" y la ") +
@@ -100,7 +170,9 @@ struct RegisterView: View {
                     .padding(.top, 20)
                     .padding(.horizontal, 2)
 
+                    // Mensajes de éxito o error
                     if let success = viewModel.successMessage {
+                        // Registro exitoso (puede requerir verificación de email según config de Supabase)
                         Label(success, systemImage: "checkmark.circle.fill")
                             .font(.caption)
                             .foregroundStyle(Color.saGreen)
@@ -109,12 +181,14 @@ struct RegisterView: View {
                         Text(error).font(.caption).foregroundStyle(Color.saDanger).padding(.top, 8)
                     }
 
+                    // Botón de crear cuenta — deshabilitado si no aceptó términos o ya se registró
                     SAButton(title: "Crear cuenta", isLoading: viewModel.isLoading) {
                         Task { await viewModel.register() }
                     }
                     .disabled(!termsAccepted || viewModel.successMessage != nil)
                     .padding(.top, 16)
 
+                    // Link de volver al login
                     HStack(spacing: 4) {
                         Text("¿Ya tenés cuenta?")
                             .font(.system(size: 14))
@@ -132,6 +206,11 @@ struct RegisterView: View {
         }
     }
 
+    // MARK: - Etiqueta de fortaleza
+
+    /// Texto descriptivo del nivel de fortaleza de la contraseña.
+    ///
+    /// Se actualiza reactivamente cada vez que cambia `strengthLevel`.
     private var strengthLabel: String {
         switch strengthLevel {
         case 0: return "Ingresá una contraseña"
